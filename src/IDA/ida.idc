@@ -20,24 +20,30 @@ AddHotkey("Ctrl-Alt-F", "myMakeFloat");
 }
 
 /*
- * Copyright (C) 2010+  Dale C. Schultz
- * RomRaider member ID: dschultz
- *
- * You are free to use this script and the finctions:
- * myMakeByte
- * myMakeWord
- * myMakeDword
- * myMakeFloat
- * for any purpose, but please keep
- * notice of where it came from!
- *
- */
+* Copyright (C) 2012  Dale C. Schultz
+* RomRaider member ID: dschultz
+*
+* You are free to use this script and the finctions:
+* myMakeByte
+* myMakeWord
+* myMakeDword
+* myMakeFloat
+* for any purpose, but please keep
+* notice of where it came from!
+*
+*/
 //-----------------------------------------------------------------------
-// Format the range of addresses from the cursor to the address entered as BYTE
+// Format the selected range of addresses or at the cursor position as BYTE
 static myMakeByte(void) {
 	auto addrFrom, addrTo;
-	addrTo = AskAddr(0,"Make BYTE:\nPlace cursor on the start address, then Enter the end address:");
-	addrFrom = here;
+	if ((SelStart() == BADADDR) || (SelEnd() == BADADDR)) {
+		addrFrom = here;
+		addrTo = addrFrom + 1;
+	}
+	else {
+		addrFrom = SelStart();
+		addrTo = SelEnd();
+	}
 	while (addrFrom < addrTo) {
 		MakeUnknown(addrFrom, 1, DOUNK_SIMPLE);
 		MakeByte(addrFrom);
@@ -46,11 +52,17 @@ static myMakeByte(void) {
 }
 
 //-----------------------------------------------------------------------
-// Format the range of addresses from the cursor to the address entered as WORD
+// Format the selected range of addresses or at the cursor position as WORD
 static myMakeWord(void) {
 	auto addrFrom, addrTo;
-	addrTo = AskAddr(0,"Make WORD:\nPlace cursor on the start address, then Enter the end address:");
-	addrFrom = here;
+	if ((SelStart() == BADADDR) || (SelEnd() == BADADDR)) {
+		addrFrom = here;
+		addrTo = addrFrom + 1;
+	}
+	else {
+		addrFrom = SelStart();
+		addrTo = SelEnd();
+	}
 	while (addrFrom < addrTo) {
 		MakeUnknown(addrFrom, 2, DOUNK_SIMPLE);
 		MakeWord(addrFrom);
@@ -58,11 +70,17 @@ static myMakeWord(void) {
 	}
 }
 //-----------------------------------------------------------------------
-// Format the range of addresses from the cursor to the address entered as DOUBLE WORD
+// Format the selected range of addresses or at the cursor position as DOUBLE WORD
 static myMakeDword(void) {
 	auto addrFrom, addrTo;
-	addrTo = AskAddr(0,"Make DWORD:\nPlace cursor on the start address, then Enter the end address:");
-	addrFrom = here;
+	if ((SelStart() == BADADDR) || (SelEnd() == BADADDR)) {
+		addrFrom = here;
+		addrTo = addrFrom + 1;
+	}
+	else {
+		addrFrom = SelStart();
+		addrTo = SelEnd();
+	}
 	while (addrFrom < addrTo) {
 		MakeUnknown(addrFrom, 4, DOUNK_SIMPLE);
 		MakeDword(addrFrom);
@@ -71,11 +89,17 @@ static myMakeDword(void) {
 }
 
 //-----------------------------------------------------------------------
-// Format the range of addresses from the cursor to the address entered as FLOAT
+// Format the selected range of addresses or at the cursor position as FLOAT
 static myMakeFloat(void) {
 	auto addrFrom, addrTo;
-	addrTo = AskAddr(0,"Make FLOAT:\nPlace cursor on the start address, then Enter the end address:");
-	addrFrom = here;
+	if ((SelStart() == BADADDR) || (SelEnd() == BADADDR)) {
+		addrFrom = here;
+		addrTo = addrFrom + 1;
+	}
+	else {
+		addrFrom = SelStart();
+		addrTo = SelEnd();
+	}
 	while (addrFrom < addrTo) {
 		MakeUnknown(addrFrom, 4, DOUNK_SIMPLE);
 		MakeFloat(addrFrom);
