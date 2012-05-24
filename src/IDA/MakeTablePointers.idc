@@ -1,11 +1,11 @@
 /*
-* Copyright (C) 2011+  Dale C. Schultz
+* Copyright (C) 2012 Dale C. Schultz
 * RomRaider member ID: dschultz
 *
 * You are free to use this script for any purpose, but please keep
 * notice of where it came from!
 *
-* Version: 3
+* Version: 4
 *
 * To use this script you must locate the bounds of the map table
 * definitions in the ROM.  For a 32bit ROM this is in the 0x82000
@@ -17,11 +17,10 @@
 * file can be used with RomRaider Editor to view the RAW formatted
 * tables.
 */
-// GetInputFilePath();
+
 #include <idc.idc>
 static main() {
 	auto currAddr, endAddr, lastAddr, globals, fout, size, maxSize, calIdAddr, calId, ync;
-//	calIdAddr = AskAddr(0x2000,"Enter the address where the CAL ID is stored,\n typically 2000 or 2004:");
 	calIdAddr = Word(SegEnd(0) - 2);
 	calId = GetString(calIdAddr, 8, ASCSTR_C);
 	ync = AskYN(1,calId + ", is this the correct CAL ID?"); // -1:cancel,0-no,1-ok
@@ -42,7 +41,6 @@ static main() {
 	writestr(fout, "   <filesize>1024kb</filesize>\n  </romid>\n");
 	currAddr = AskAddr(0,"Enter a start address or leave at 0 to use the current cursor position:");
 	endAddr = AskAddr(0,"Enter end address:");
-//	endAddr = GetMarkedPos(0);
 
 	if (currAddr == 0){
 		currAddr = here;
@@ -61,7 +59,6 @@ static main() {
 			lastAddr = currAddr;
 			currAddr = Make2dRawTable(currAddr);
 			size = currAddr+1-lastAddr;
-//			Message("Table 2D, size:" + form("%d", size) + ", data:raw, ROM:0x" + ltoa(lastAddr, 16) + "\n");
 			Message("Table 2D, size:" + form("%d", size) + ", data:raw, ROM:0x" + ltoa(lastAddr, 16) + ", " + GetArrayElement(AR_STR, globals, 1));
 			lastAddr = currAddr+1;
 		}
@@ -76,8 +73,6 @@ static main() {
 		if (((Word(currAddr) > 0) && (Word(currAddr) < 256)) &&
 			((Word(currAddr+2) == 0x0400) || (Word(currAddr+2) == 0x0800) ||
 			 (Word(currAddr+2) == 0x0C00) || (Word(currAddr+2) == 0x1000)) &&
-//			!((Word(currAddr+14) == 0x0400) || (Word(currAddr+14) == 0x0800) ||
-//			 (Word(currAddr+14) == 0x0C00) || (Word(currAddr+14) == 0x1000)) &&
 			 (((Word(currAddr+20) > 0) && (Word(currAddr+20) < 256)) &&
 			 ((Word(currAddr+22) >= 0) && (Word(currAddr+22) < 3073)))) {
 			lastAddr = currAddr;
@@ -95,8 +90,6 @@ static main() {
 		if (((Word(currAddr) > 0) && (Word(currAddr) < 256)) &&
 			((Word(currAddr+2) == 0x0400) || (Word(currAddr+2) == 0x0800) ||
 			 (Word(currAddr+2) == 0x0C00) || (Word(currAddr+2) == 0x1000)) &&
-//			!((Word(currAddr+14) == 0x0400) || (Word(currAddr+14) == 0x0800) ||
-//			 (Word(currAddr+14) == 0x0C00) || (Word(currAddr+14) == 0x1000)) &&
 			 (((Word(currAddr+12) > 0) && (Word(currAddr+12) < 256)) &&
 			 ((Word(currAddr+14) >= 0) && (Word(currAddr+14) < 3073)))) {
 			lastAddr = currAddr;
@@ -121,7 +114,6 @@ static main() {
 			lastAddr = currAddr;
 			currAddr = Make3dRawTable(currAddr);
 			size = currAddr+1-lastAddr;
-//			Message("Table 3D, size:" + form("%d", size) + ", data:raw, ROM:0x" + ltoa(lastAddr, 16) + "\n");
 			Message("Table 3D, size:" + form("%d", size) + ", data:raw, ROM:0x" + ltoa(lastAddr, 16) + ", " + GetArrayElement(AR_STR, globals, 1));
 			lastAddr = currAddr+1;
 		}
@@ -166,8 +158,8 @@ static main() {
 
 static Make2dRawTable(currAddr) {
 	auto axisAddr, dataAddr, dataLength, dataType, dataAlign, x, fMin, fMax, fNum, fNumNext;
-	fMin = -66000.1;
-	fMax =  66000.1;
+	fMin = 0 - 66000.1;
+	fMax = 66000.;
 	MakeUnknown(currAddr, 12, DOUNK_SIMPLE);
 	MakeWord(currAddr);			// length
 	dataLength = Word(currAddr);
@@ -181,24 +173,14 @@ static Make2dRawTable(currAddr) {
 	dataAddr = Dword(currAddr);
 	currAddr = currAddr+3;
 	FormatTableAxis(axisAddr, dataLength);
-	//if (dataLength > 0x4) {
-		dataAlign = dataLength % 0x2;
-	//}	
-	//else {
-	//	if (dataLength%0x4 == 0) dataAlign = 0;
-		//if (dataLength%0x4 == 1) dataAlign = 3;
-		//if (dataLength%0x4 == 2) dataAlign = 2;
-		//if (dataLength%0x4 == 3) dataAlign = 1;
-	//}
+	dataAlign = dataLength % 0x2;
 	if (DfirstB((dataAddr + (dataLength + dataAlign))) != BADADDR) {
 		dataType = 0x04;
 		FormatTableData(dataAddr, dataLength, 1, 0, dataType);
-		//Message("uint8 reference for table 0x" + ltoa(dataAddr,16) + " to " + ltoa(DfirstB(dataAddr + (dataLength + dataAlign)),16) + "\n");
 	}
 	else if (DfirstB(dataAddr + ((dataLength + dataAlign)*2)) != BADADDR) {
 		dataType = 0x08;
 		FormatTableData(dataAddr, dataLength, 1, 0, dataType);
-		//Message("uint16 reference for table 0x" + ltoa(dataAddr,16) + " to " + ltoa(DfirstB(dataAddr + ((dataLength + dataAlign)*2)),16) + "\n");
 	}
 	else if (DfirstB(dataAddr + (dataLength*4)) != BADADDR) {
 		fNum = GetFpNum(dataAddr,4);
@@ -206,12 +188,10 @@ static Make2dRawTable(currAddr) {
 		if ((fNum >= fMin && fNum <= fMax && fNumNext >= fMin && fNumNext <= fMax) || Dword(dataAddr) == 0) {
 			dataType = "float";
 			FormatTableData(dataAddr, dataLength, 1, 0, dataType);
-			//Message("float reference for table 0x" + ltoa(dataAddr,16) + " to " + ltoa(DfirstB(dataAddr + (dataLength*4)),16) + "\n");
 		}
 		else {
 			dataType = "float";
 			FormatTableData(dataAddr, dataLength, 1, 0, dataType);
-			// Message("dword reference for table 0x" + ltoa(dataAddr,16) + " to " + ltoa(DfirstB(dataAddr + (dataLength*4)),16) + " first data = 0x" + form("%08s",ltoa(Dword(dataAddr),16)) + "\n");
 		}	
 	}
 	Print2dTable(axisAddr, dataAddr, dataLength, dataType, 1, 0);
@@ -268,8 +248,8 @@ static Make2dUintTableNoConv(currAddr) {
 
 static Make3dRawTable(currAddr) {
 	auto axisYAddr, dataYLength, axisXAddr, dataXLength, dataAddr, dataLength, dataAlign, dataType, fMin, fMax, fNum, fNumNext;
-	fMin = -66000.1;
-	fMax =  66000.1;
+	fMin = 0 - 66000.1;
+	fMax = 66000.1;
 	MakeUnknown(currAddr, 20, DOUNK_SIMPLE);
 	MakeWord(currAddr);			// X length
 	dataXLength = Word(currAddr);
@@ -303,12 +283,10 @@ static Make3dRawTable(currAddr) {
 	if (DfirstB((dataAddr + (dataLength + dataAlign))) != BADADDR) {
 		dataType = 0x04;
 		FormatTableData(dataAddr, dataLength, 1, 0, dataType);
-		//Message("uint8 reference for table 0x" + ltoa(dataAddr,16) + " to " + ltoa(DfirstB(dataAddr + (dataLength + dataAlign)),16) + "\n");
 	}
 	else if (DfirstB(dataAddr + ((dataLength + dataAlign)*2)) != BADADDR) {
 		dataType = 0x08;
 		FormatTableData(dataAddr, dataLength, 1, 0, dataType);
-		//Message("uint16 reference for table 0x" + ltoa(dataAddr,16) + " to " + ltoa(DfirstB(dataAddr + ((dataLength + dataAlign)*2)),16) + "\n");
 	}
 	else if (DfirstB(dataAddr + (dataLength*4)) != BADADDR) {
 		fNum = GetFpNum(dataAddr,4);
@@ -316,12 +294,10 @@ static Make3dRawTable(currAddr) {
 		if ((fNum >= fMin && fNum <= fMax && fNumNext >= fMin && fNumNext <= fMax) || Dword(dataAddr) == 0) {
 			dataType = "float";
 			FormatTableData(dataAddr, dataLength, 1, 0, dataType);
-			//Message("float reference for table 0x" + ltoa(dataAddr,16) + " to " + ltoa(DfirstB(dataAddr + (dataLength*4)),16) + "\n");
 		}
 		else {
 			dataType = "float";
 			FormatTableData(dataAddr, dataLength, 1, 0, dataType);
-			// Message("dword reference for table 0x" + ltoa(dataAddr,16) + " to " + ltoa(DfirstB(dataAddr + (dataLength*4)),16) + " first data = 0x" + form("%08s",ltoa(Dword(dataAddr),16)) + "\n");
 		}	
 	}
 	Print3dTable(axisYAddr, dataYLength, axisXAddr, dataAddr, dataXLength, dataType, 1, 0);
@@ -366,16 +342,7 @@ static FormatTableAxis(axisAddr, myLength) {
 	auto i;
 	for ( i=0; i < myLength*4; i=i+4 ) {
 		MakeUnknown(axisAddr+i, 4, DOUNK_SIMPLE);
-//		if(axisAddr >= 0xC8174 && axisAddr <0xC8198) {
-//			Warning("0x"+ltoa(Dword(axisAddr+i),16) + " float:" + form("%1.3f",GetFpNum(axisAddr+i,4)));
-//		}
-//		if (GetFpNum(axisAddr+i,4) == -1) {
-			//Message("Make float failed\n");
-//			MakeDword(axisAddr+i);
-//		}
-//		else {
 			MakeFloat(axisAddr+i);
-//		}
 	}
 }
 
@@ -463,6 +430,10 @@ static Print2dTable(axisAddr, dataAddr, dataLength, dataType, dataM, dataA) {
 		dataType = "int16";
 		dataStr = dataType;
 	}
+	if (dataType == "") {
+		dataType = "uint8";
+		dataStr = "unkn data type";
+	}
 	dataLength = form("%d", dataLength);
 	writestr(GetArrayElement(AR_LONG, arrayId, 0), 
 		"<table type=\"2D\" name=\"Table at ROM:0x" + ltoa(dataAddr, 16) + " - size " + ltoa(dataLength, 10) + "\" category=\"2D - Tables - " + dataStr + "\" storagetype=\"" + dataType +"\" endian=\"big\" sizey=\"" + dataLength + "\" userlevel=\"4\" logparam=\"unkn\" storageaddress=\"0x" + ltoa(dataAddr, 16) + "\">\n");
@@ -505,6 +476,10 @@ static Print3dTable(axisYAddr, dataYLength, axisXAddr, dataAddr, dataXLength, da
 	if (dataType == 0x10) {
 		dataType = "int16";
 		dataStr = dataType;
+	}
+	if (dataType == "") {
+		dataType = "uint8";
+		dataStr = "unkn data type";
 	}
 	dataYLength = form("%d", dataYLength);
 	dataXLength = form("%d", dataXLength);
