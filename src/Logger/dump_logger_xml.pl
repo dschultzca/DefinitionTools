@@ -1,16 +1,9 @@
 #!/usr/bin/perl 
-#
-# Copyright (C) 2011+  Dale C. Schultz
-# RomRaider member ID: dschultz
-#
-# You are free to use this source for any purpose, but please keep
-# notice of where it came from!
-#
-#
+
 # Purpose
 #	Reads the database and dumps logger XML file to STDOUT
-#	Version:	3
-#	Update:	Sept. 20/2011
+#	Version:	4
+#	Update:	Aug. 11/2012
 #------------------------------------------------------------------------------------------
 
 # dump format
@@ -37,6 +30,27 @@
 #                </ecuparam>
 
 use DBI;
+use Getopt::Std;
+
+# Set up the command line to accept the language to dump.
+my $ret = getopts ("l:u:");
+my $locale = $opt_l;
+my $measure = $opt_u;
+if (($locale ne "en" && $locale ne "de") || 
+    ($measure ne "std" && $measure ne "imp" && $measure ne "metric")) {
+	die "Usage: $0 -l locale -u units> <output_file.xml>\nWhere locale is: 'en' or 'de'\n   and units is: 'std', 'imp' or 'metric'";
+}
+my $unitname;
+if ($measure eq "std") {
+	$unitname = "STANDARD";
+}
+if ($measure eq "imp") {
+	$unitname = "IMPERIAL";
+}
+if ($measure eq "metric") {
+	$unitname = "METRIC";
+}
+
 # create a handle and connect to the statistics database
 $dbh = DBI->connect (
 	'DBI:mysql:database=logger;host=localhost',
@@ -50,25 +64,42 @@ $sth->execute;
 $sth->bind_columns(\$serial, \$version, \$update);
 $sth->fetch;
 $update =~ s/$\$\///;
+$update =~ s/\r\n/ /;
+
+binmode(STDOUT, ":utf8");
 
 # Dump standard parameters header section
 &header;
 
 # SSM Parameter list
-my $id, $name, $desc, $byteidx, $bitidx, $target, $address, $length, $depends;
-$sql = qq(
-	SELECT parameter.serial, parameter.id, parameter.name,
-	parameter.desc, parameter.byteidx, parameter.bitidx, parameter.target,
-	address.address, address.length, depends.parameters
-	FROM parameter
-	LEFT JOIN parameter_rel ON parameter.serial = parameter_rel.parameterid
-	LEFT JOIN address ON parameter_rel.addressid=address.serial
-	LEFT JOIN depends ON parameter_rel.dependsid=depends.serial
-  );
+my $id, $reserved, $name, $desc, $byteidx, $bitidx, $target, $address, $length, $depends;
+if ($locale eq "de") {
+	$sql = qq(
+		SELECT parameter.serial, parameter.id, parameter.reserved, parameter.name_de,
+		parameter.desc_de, parameter.byteidx, parameter.bitidx, parameter.target,
+		address.address, address.length, depends.parameters
+		FROM parameter
+		LEFT JOIN parameter_rel ON parameter.serial = parameter_rel.parameterid
+		LEFT JOIN address ON parameter_rel.addressid=address.serial
+		LEFT JOIN depends ON parameter_rel.dependsid=depends.serial
+	  );
+}
+if ($locale eq "en") {
+	$sql = qq(
+		SELECT parameter.serial, parameter.id, parameter.reserved, parameter.name,
+		parameter.desc, parameter.byteidx, parameter.bitidx, parameter.target,
+		address.address, address.length, depends.parameters
+		FROM parameter
+		LEFT JOIN parameter_rel ON parameter.serial = parameter_rel.parameterid
+		LEFT JOIN address ON parameter_rel.addressid=address.serial
+		LEFT JOIN depends ON parameter_rel.dependsid=depends.serial
+	  );
+}
 $sth = $dbh->prepare($sql);
 $sth->execute;
-$sth->bind_columns(\$serial, \$id, \$name, \$desc, \$byteidx, \$bitidx, \$target, \$address, \$length, \$depends);
+$sth->bind_columns(\$serial, \$id, \$reserved, \$name, \$desc, \$byteidx, \$bitidx, \$target, \$address, \$length, \$depends);
 while ($sth->fetch) {
+	next if ($reserved);
 	$parameter_id{$id}=$serial;
 	$parameter_id{$id}{'name'}=$name;
 	if ($desc) {
@@ -119,19 +150,32 @@ foreach $id (sort {$a<=>$b} keys %parameter_id) {
 # Dump switches section
 print "            </parameters>\n";
 print "            <switches>\n";
-my $id, $name, $desc, $byteidx, $bitidx, $target, $address;
-$sql = qq(
-	SELECT switch.serial, switch.id, switch.name,
-	switch.desc, switch.byteidx, switch.bitidx,
-	switch.target, address.address
-	FROM switch
-	LEFT JOIN switch_rel ON switch.serial = switch_rel.switchid
-	LEFT JOIN address ON switch_rel.addressid=address.serial
-  );
+my $id, $reserved, $name, $desc, $byteidx, $bitidx, $target, $address;
+if ($locale eq "de") {
+	$sql = qq(
+		SELECT switch.serial, switch.id, switch.reserved, switch.name_de,
+		switch.desc_de, switch.byteidx, switch.bitidx,
+		switch.target, address.address
+		FROM switch
+		LEFT JOIN switch_rel ON switch.serial = switch_rel.switchid
+		LEFT JOIN address ON switch_rel.addressid=address.serial
+	  );
+}
+if ($locale eq "en") {
+	$sql = qq(
+		SELECT switch.serial, switch.id, switch.reserved, switch.name,
+		switch.desc, switch.byteidx, switch.bitidx,
+		switch.target, address.address
+		FROM switch
+		LEFT JOIN switch_rel ON switch.serial = switch_rel.switchid
+		LEFT JOIN address ON switch_rel.addressid=address.serial
+	  );
+}
 $sth = $dbh->prepare($sql);
 $sth->execute;
-$sth->bind_columns(\$serial, \$id, \$name, \$desc, \$byteidx, \$bitidx, \$target, \$address);
+$sth->bind_columns(\$serial, \$id, \$reserved, \$name, \$desc, \$byteidx, \$bitidx, \$target, \$address);
 while ($sth->fetch) {
+	next if ($reserved);
 	$switch_id{$id}=$serial;
 	$switch_id{$id}{'name'}=$name;
 	if($target == 1) {
@@ -169,11 +213,25 @@ print "            <ecuparams>\n";
 
 # ECU parameter list
 my $id, $name, $desc, $ecuid;
-$sql = qq(SELECT `serial`, `id`, `name`, `desc`, `target` FROM ecuparam);
+if ($locale eq "de") {
+	$sql = qq(
+		SELECT ecuparam.serial, ecuparam.id, ecuparam.reserved, ecuparam.name_de,
+		ecuparam.desc_de, ecuparam.target
+		FROM ecuparam;
+	);
+}
+if ($locale eq "en") {
+	$sql = qq(
+		SELECT ecuparam.serial, ecuparam.id, ecuparam.reserved, ecuparam.name,
+		ecuparam.desc, ecuparam.target
+		FROM ecuparam;
+	);
+}
 $sth = $dbh->prepare($sql);
 $sth->execute;
-$sth->bind_columns(\$serial, \$id, \$name, \$desc, \$target);
+$sth->bind_columns(\$serial, \$id, \$reserved, \$name, \$desc, \$target);
 while ($sth->fetch) {
+	next if ($reserved);
 	$ecuparam_id{$id}=$serial;
 	$ecuparam_id{$id}{'name'}=$name;
 	if ($desc) {
@@ -238,19 +296,22 @@ sub get_address_id {
 sub get_ssm_conversion_id {
 	# get the Conversions for the SSM Parameter serial# pasted to sub
 	my $ssmparamid = shift;
-	my $units, $type, $expression, $format, $min, $max, $step;
+	my $units, $type, $expression, $format, $min, $max, $step, $std, $imp, $metric, $units_de, $gauge;
+	my $orderby = "conversion.order_$measure";
 	my $sql = qq( 
-		SELECT conversion.units, conversion.type, conversion.expression, conversion.format, conversion.min, conversion.max, conversion.step
+		SELECT conversion.units, conversion.type, conversion.expression, conversion.format, conversion.min, conversion.max, conversion.step,
+		conversion.order_std, conversion.order_imp, conversion.order_metric, conversion.units_de
 		FROM conversion_rel
 		LEFT JOIN conversion ON conversion_rel.conversionid=conversion.serial
 		WHERE conversion_rel.parameterid = ?
-		ORDER BY conversion.units DESC
+		ORDER BY $orderby ASC
 		);
 		my $sth = $dbh->prepare($sql);
 	$sth->execute($ssmparamid);
-	$sth->bind_columns(\$units, \$type, \$expression, \$format, \$min, \$max, \$step);
+	$sth->bind_columns(\$units, \$type, \$expression, \$format, \$min, \$max, \$step, \$std, \$imp, \$metric, \$units_de);
 	while ($sth->fetch) {
 		$storage = "storagetype=\"${type}\" " if ($type);
+		$units = $units_de if ($units_de ne '' && $locale eq "de");
 		if ($min) {
 			$gauge = sprintf('gauge_min="%.5g" gauge_max="%.5g" gauge_step="%.5g" ',
 			$min, $max, $step);
@@ -265,21 +326,29 @@ sub get_ssm_conversion_id {
 sub get_conversion_id {
 	# get the Conversions for the Extended Parameter serial# pasted to sub
 	my $ecuparamid = shift;
-	my $units, $type, $expression, $format;
+	my $units, $type, $expression, $format, $min, $max, $step, $std, $imp, $metric, $units_de, $gauge;
+	my $orderby = "conversion.order_$measure";
 	my $sql = qq( 
-		SELECT conversion.units, conversion.type, conversion.expression, conversion.format
+		SELECT conversion.units, conversion.type, conversion.expression, conversion.format,
+		conversion.order_std, conversion.order_imp, conversion.order_metric, conversion.units_de
 		FROM conversion_rel
 		LEFT JOIN conversion ON conversion_rel.conversionid=conversion.serial
 		WHERE conversion_rel.ecuparamid = ?
-		ORDER BY conversion.serial ASC
+		ORDER BY $orderby ASC
 		);
 		my $sth = $dbh->prepare($sql);
 	$sth->execute($ecuparamid);
-	$sth->bind_columns(\$units, \$type, \$expression, \$format);
+	$sth->bind_columns(\$units, \$type, \$expression, \$format, \$std, \$imp, \$metric, \$units_de);
 	while ($sth->fetch) {
 		$storage = "storagetype=\"${type}\" " if ($type);
-		print "                        <conversion units=\"${units}\" ${storage}expr=\"${expression}\" format=\"${format}\" />\n";
+		$units = $units_de if ($units_de ne '' && $locale eq "de");
+		if ($min) {
+			$gauge = sprintf('gauge_min="%.5g" gauge_max="%.5g" gauge_step="%.5g" ',
+			$min, $max, $step);
+		}
+		print "                        <conversion units=\"${units}\" ${storage}expr=\"${expression}\" format=\"${format}\" ${gauge}/>\n";
 		$storage = "";
+		$gauge = "";
 	}
 	return;
 }
@@ -318,7 +387,7 @@ sub header {
 print <<STDPARAM;
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE logger SYSTEM "logger.dtd">
-<!--ROMRAIDER STANDARD UNITS LOGGER DEFINITION FILE (VERSION $serial) $version
+<!--ROMRAIDER $unitname UNITS LOGGER DEFINITION FILE (VERSION $serial) $version [$locale]
 $update
 
 TERMS, CONDITIONS, AND DISCLAIMERS

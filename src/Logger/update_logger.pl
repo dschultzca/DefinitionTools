@@ -1,6 +1,6 @@
 #!/usr/bin/perl 
 #
-# Copyright (C) 2010+  Dale C. Schultz
+# Copyright (C) 2012  Dale C. Schultz
 # RomRaider member ID: dschultz
 #
 # You are free to use this source for any purpose, but please keep
@@ -9,8 +9,8 @@
 #
 # Purpose
 #       Reads from IDC dump file to update mySQL logger database.
-#	Version:		2
-#	Update:		Oct. 30/2010	
+#	Version:	3
+#	Update:		May 24/2012	
 #------------------------------------------------------------------------------------------
 
 use File::Basename;
@@ -49,7 +49,7 @@ $add_addr = 0;
 $change_addr = 0;
 $add_entry = 0;
 
-print "Current Database Version: $db_version\n";
+print "Current Database Version: $db_id ($db_version)\n";
 #check if we have the ECU ID already
 if (!$ecuid_id{$param_file}) {
 	print "ECU ID $param_file is not defined.\n";
@@ -65,6 +65,7 @@ if (!$ecuid_id{$param_file}) {
 }
 else {
 	print "ECU ID $param_file ($ecuid_id{$param_file}) exists.\n";
+	$update = "Updated ECU ID: $param_file extended parameters \n";
 }
 $count = 0;
 $count1 = 0;
@@ -115,7 +116,7 @@ foreach $line (<INPUT>) {
 	else {
 		# print "Address $values[1]/$values[2] ($address_id{$values[1]}{$values[2]}) exists.\n";
 	}
-	# check to see if the parameter enry exisits and if the address and data length match or not
+	# check to see if the parameter entry exists and if the address and data length match or not
 	# if they do not match then UPDATE rather than INSERT the entry
 	if (defined($unique_id_check{$param_file.$extid}) &&
 		($unique_id_check{$param_file.$extid} != $address_id{$values[1]}{$values[2]})) {
@@ -162,8 +163,9 @@ if ($warn) {
 }
 if ($commit) {
 	&update_version;
-	print "COMMIT: New Database version is $version\n";
-	print "Changes:\n$update";
+	&get_db_version;
+	print "COMMIT: New Database version is $db_id ($db_version)\n";
+	print "Changes:\n$update\n";
 }
 elsif ($warn) {
 	print "!--> Correct input file and test again <--!\n";
@@ -186,12 +188,13 @@ exit;
 
 sub get_db_version {
 	# get database version
-	my $version;
-	my $sql = qq(SELECT version FROM version ORDER BY id DESC LIMIT 1);
+	my $id, $version;
+	my $sql = qq(SELECT id, version FROM version ORDER BY id DESC LIMIT 1);
 	my $sth = $dbh->prepare($sql);
 	$sth->execute;
-	$sth->bind_columns(\$version);
+	$sth->bind_columns(\$id, \$version);
 	while ($sth->fetch) {
+		$db_id=$id;
 		$db_version=$version;
 	}
 	$sth->finish;
@@ -316,6 +319,7 @@ sub update_version {
 	my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime(time);
 	$year += 1900;
 	$version = sprintf("%04d%02d%02d_%02d%02d%02d", $year, ++$mon, $mday, $hour, $min, $sec);
+	$update =~ s/\n$//;
 	my $sql_version_in = qq[INSERT INTO `version` (`version`, `update`)  VALUES ('$version', '$update')];
 	my $sth = $dbh->prepare($sql_version_in);
 	$sth->execute;
