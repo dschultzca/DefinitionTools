@@ -1,9 +1,16 @@
 #!/usr/bin/perl 
 
+# Copyright (C) 2012  Dale C. Schultz
+# RomRaider member ID: dschultz
+#
+# You are free to use this source for any purpose, but please keep
+# notice of where it came from!
+#
+#
 # Purpose
 #	Reads the database and dumps logger XML file to STDOUT
-#	Version:	4
-#	Update:	Aug. 11/2012
+#	Version:    5
+#	Update:     Aug. 25/2012
 #------------------------------------------------------------------------------------------
 
 # dump format

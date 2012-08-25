@@ -8,9 +8,9 @@
 #
 #
 # Purpose
-#       Reads from IDC dump file to update mySQL logger database.
-#	Version:	3
-#	Update:		May 24/2012	
+#   Reads from IDC dump file to update mySQL logger database.
+#	Version:	4
+#	Update:		Aug. 25/2012	
 #------------------------------------------------------------------------------------------
 
 use File::Basename;
