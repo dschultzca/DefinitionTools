@@ -6,11 +6,11 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("XmlToIdc")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyDescription("Convert logger.xml information to IDA idc script.")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("NSFW")]
 [assembly: AssemblyProduct("XmlToIdc")]
-[assembly: AssemblyCopyright("Copyright © NSFW 2010")]
+[assembly: AssemblyCopyright("Copyright © 2012 NSFW and dschultz")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -32,5 +32,5 @@ using System.Runtime.InteropServices;
 // You can specify all the values or you can default the Build and Revision Numbers 
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("1.1.0.*")]
-[assembly: AssemblyFileVersion("1.1.0.0")]
+[assembly: AssemblyVersion("1.2.0.*")]
+[assembly: AssemblyFileVersion("1.2.0.1")]

@@ -1,5 +1,5 @@
 ﻿/*
- * Copyright (C) 2010+  NSFW@romraider.forum and Dale C. Schultz
+ * Copyright (C) 2012  NSFW@romraider.forum and Dale C. Schultz
  * RomRaider member ID: NSFW and dschultz
  *
  * You are free to use this script for any purpose, but please keep
@@ -9,7 +9,7 @@
 using System;
 using System.IO;
 using System.Collections.Generic;
-using System.Linq;
+//using System.Linq;
 using System.Text;
 using System.Xml;
 using System.Xml.XPath;
@@ -265,7 +265,7 @@ namespace NSFW.XmlToIdc
 
                     if (!navigator.MoveToChild("address", ""))
                     {
-                        break;
+                        continue;
                     }
 
                     string addressString = iter.Current.InnerXml;
