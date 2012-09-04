@@ -8,9 +8,9 @@
 #
 #
 # Purpose
-#   Reads from IDC dump file to update mySQL logger database.
-#	Version:	4
-#	Update:		Aug. 25/2012	
+#   Reads from IDC dump file to update MySQL Logger definitions tables.
+#	Version:	5
+#	Update:		Sep. 4/2012	
 #------------------------------------------------------------------------------------------
 
 use File::Basename;
@@ -31,7 +31,7 @@ use DBI;
 
 # create a handle and connect to the statistics database
 $dbh = DBI->connect (
-	'DBI:mysql:database=logger;host=localhost',
+	'DBI:mysql:database=definitions;host=localhost',
 	'root','ieee802',{AutoCommit=>1, RaiseError=>0, PrintError=>0})
 	or die "$0: Couldn't connect to database";
 

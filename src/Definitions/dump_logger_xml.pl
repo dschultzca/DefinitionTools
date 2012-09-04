@@ -9,8 +9,8 @@
 #
 # Purpose
 #	Reads the database and dumps logger XML file to STDOUT
-#	Version:    5
-#	Update:     Aug. 25/2012
+#	Version:    6
+#	Update:     Sep. 4/2012
 #------------------------------------------------------------------------------------------
 
 # dump format
@@ -60,7 +60,7 @@ if ($measure eq "metric") {
 
 # create a handle and connect to the statistics database
 $dbh = DBI->connect (
-	'DBI:mysql:database=logger;host=localhost',
+	'DBI:mysql:database=definitions;host=localhost',
 	'root','ieee802',{AutoCommit=>1, RaiseError=>0, PrintError=>0})
 	or die "$0: Couldn't connect to database";
 
