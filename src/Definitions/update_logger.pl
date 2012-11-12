@@ -9,8 +9,8 @@
 #
 # Purpose
 #   Reads from IDC dump file to update MySQL Logger definitions tables.
-#	Version:	5
-#	Update:		Sep. 4/2012	
+#	Version:	6
+#	Update:		Nov. 12/2012	
 #------------------------------------------------------------------------------------------
 
 use File::Basename;
@@ -238,7 +238,7 @@ sub get_address_id {
 sub get_ecu_id {
 	# create an array for all of the ECU IDs
 	my $serial, $ecuid;
-	my $sql = qq(SELECT * FROM ecuid);
+	my $sql = qq(SELECT serial,ecuid FROM ecuid);
 	my $sth = $dbh->prepare($sql);
 	$sth->execute;
 	$sth->bind_columns(\$serial, \$ecuid);
