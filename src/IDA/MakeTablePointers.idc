@@ -5,7 +5,8 @@
 * You are free to use this script for any purpose, but please keep
 * notice of where it came from!
 *
-* Version: 4
+* Version: 5
+* Date   : 2012-11-18
 *
 * To use this script you must locate the bounds of the map table
 * definitions in the ROM.  For a 32bit ROM this is in the 0x82000
@@ -20,13 +21,13 @@
 
 #include <idc.idc>
 static main() {
-	auto currAddr, endAddr, lastAddr, globals, fout, size, maxSize, calIdAddr, calId, ync;
+	auto currAddr, endAddr, lastAddr, globals, fout, size, maxSize, calIdAddr, calId, ync, nextTable;
 	calIdAddr = Word(SegEnd(0) - 2);
 	calId = GetString(calIdAddr, 8, ASCSTR_C);
 	ync = AskYN(1,calId + ", is this the correct CAL ID?"); // -1:cancel,0-no,1-ok
 	if (ync == -1) { return 0;}
 	if (ync == 0 ) {
-		calIdAddr = AskAddr(0x2000,"Enter the address where the CAL ID is stored,\n typically 2000 or 2004:");
+		calIdAddr = AskAddr(0x2000,"Enter the address where the CAL ID is stored,\n typically 2000, 2004 400C:");
 		calId = GetString(calIdAddr, 8, ASCSTR_C);
 	}
 	globals = GetArrayId("myGlobals");
@@ -45,6 +46,7 @@ static main() {
 	if (currAddr == 0){
 		currAddr = here;
 	}
+	nextTable = currAddr;
 	while (currAddr <= endAddr) {
 		// 1 axis table with no data conversion values, undefined data type
 		// Table Definition is 12 bytes long with the format:
@@ -55,7 +57,8 @@ static main() {
 		if (((Word(currAddr) > 0) && (Word(currAddr) < 256)) &&
 			 (Word(currAddr+2) == 0x0000) &&
 			 (((Word(currAddr+12) > 0) && (Word(currAddr+12) < 256)) &&
-			 ((Word(currAddr+14) >= 0) && (Word(currAddr+14) < 3073)))) {
+			 ((Word(currAddr+14) >= 0) && (Word(currAddr+14) < 4097)))) {
+			nextTable = nextTable + 12;
 			lastAddr = currAddr;
 			currAddr = Make2dRawTable(currAddr);
 			size = currAddr+1-lastAddr;
@@ -74,7 +77,8 @@ static main() {
 			((Word(currAddr+2) == 0x0400) || (Word(currAddr+2) == 0x0800) ||
 			 (Word(currAddr+2) == 0x0C00) || (Word(currAddr+2) == 0x1000)) &&
 			 (((Word(currAddr+20) > 0) && (Word(currAddr+20) < 256)) &&
-			 ((Word(currAddr+22) >= 0) && (Word(currAddr+22) < 3073)))) {
+			 ((Word(currAddr+22) >= 0) && (Word(currAddr+22) < 4097)))) {
+			nextTable = nextTable + 20;
 			lastAddr = currAddr;
 			currAddr = Make2dUintTable(currAddr);
 			size = currAddr+1-lastAddr;
@@ -91,11 +95,33 @@ static main() {
 			((Word(currAddr+2) == 0x0400) || (Word(currAddr+2) == 0x0800) ||
 			 (Word(currAddr+2) == 0x0C00) || (Word(currAddr+2) == 0x1000)) &&
 			 (((Word(currAddr+12) > 0) && (Word(currAddr+12) < 256)) &&
-			 ((Word(currAddr+14) >= 0) && (Word(currAddr+14) < 3073)))) {
+			 ((Word(currAddr+14) >= 0) && (Word(currAddr+14) < 4097)))) {
+			nextTable = nextTable + 12;
 			lastAddr = currAddr;
 			currAddr = Make2dUintTableNoConv(currAddr);
 			size = currAddr+1-lastAddr;
 			Message("Table 2D, size:" + form("%d", size) + ", data:int, ROM:0x" + ltoa(lastAddr, 16) + ", " + GetArrayElement(AR_STR, globals, 1));
+			lastAddr = currAddr+1;
+		}
+		// 2 axis table with no data conversion values, defined data type
+		// Table Definition is 20 bytes long with the format:
+		// word = X axis length
+		// word = Y axis length
+		// dword = X axis address
+		// dword = Y axis address
+		// dword = data address
+		// word = data storage type
+		if (((Word(currAddr) > 0) && (Word(currAddr) < 256)) &&
+			((Word(currAddr+2) > 0) && (Word(currAddr+2) < 256)) &&
+			((Dword(currAddr+16) == 0x04000000) || (Dword(currAddr+16) == 0x08000000) ||
+			 (Dword(currAddr+16) == 0x0C000000) || (Dword(currAddr+16) == 0x10000000)) &&
+			 (((Word(currAddr+20) > 0) && (Word(currAddr+20) < 256)) &&
+			 ((Word(currAddr+22) >= 0) && (Word(currAddr+22) < 4097)))) {
+			nextTable = nextTable + 20;
+			lastAddr = currAddr;
+			currAddr = Make3dUintTableNoConv(currAddr);
+			size = currAddr+1-lastAddr;
+			Message("Table 3D, size:" + form("%d", size) + ", data:int, ROM:0x" + ltoa(lastAddr, 16) + ", " + GetArrayElement(AR_STR, globals, 1));
 			lastAddr = currAddr+1;
 		}
 		// 2 axis table with no data conversion values, undefined data type
@@ -110,7 +136,8 @@ static main() {
 			((Word(currAddr+2) > 0) && (Word(currAddr+2) < 256)) &&
 			(Dword(currAddr+16) == 0x00000000) &&
 			 (((Word(currAddr+20) > 0) && (Word(currAddr+20) < 256)) &&
-			 ((Word(currAddr+22) >= 0) && (Word(currAddr+22) < 3073)))) {
+			 ((Word(currAddr+22) >= 0) && (Word(currAddr+22) < 4097)))) {
+			nextTable = nextTable + 20;
 			lastAddr = currAddr;
 			currAddr = Make3dRawTable(currAddr);
 			size = currAddr+1-lastAddr;
@@ -132,7 +159,8 @@ static main() {
 			((Dword(currAddr+16) == 0x04000000) || (Dword(currAddr+16) == 0x08000000) ||
 			 (Dword(currAddr+16) == 0x0C000000) || (Dword(currAddr+16) == 0x10000000)) &&
 			 (((Word(currAddr+28) > 0) && (Word(currAddr+28) < 256)) &&
-			 ((Word(currAddr+30) >= 0) && (Word(currAddr+30) < 3073)))) {
+			 ((Word(currAddr+30) >= 0) && (Word(currAddr+30) < 4097)))) {
+			nextTable = nextTable + 28;
 			lastAddr = currAddr;
 			currAddr = Make3dUintTable(currAddr);
 			size = currAddr+1-lastAddr;
@@ -142,6 +170,7 @@ static main() {
 		if (size > maxSize) {
 			maxSize = size;
 		}
+//		Message("Next table expected at ROM:0x" + ltoa(lastAddr, 16) + "\n");
 		SetArrayString(globals, 1, "\n");
 		currAddr = currAddr+1;
 	}
@@ -152,7 +181,7 @@ static main() {
 		Message("WARNING: Table definitions found that are greater than 28 bytes long. These tables need attention\n");
 	}
 	else {
-		Message("Finished, no warnings\n");
+		Message("Finished, no warnings BUT the last table may not have been defined.\n  You should double check it. ROM:0x" + ltoa(lastAddr, 16) + "\n");
 	}
 }
 
@@ -338,6 +367,34 @@ static Make3dUintTable(currAddr) {
 	return currAddr;
 }
 
+static Make3dUintTableNoConv(currAddr) {
+	auto axisYAddr, dataYLength, axisXAddr, dataAddr, dataXLength, dataType, dataM, dataA;
+	MakeUnknown(currAddr, 20, DOUNK_SIMPLE);
+	MakeWord(currAddr);			// X length
+	dataXLength = Word(currAddr);
+	currAddr = currAddr+2;
+	MakeWord(currAddr);			// Y Length
+	dataYLength = Word(currAddr);
+	currAddr = currAddr+2;
+	MakeDword(currAddr);		// X axis address
+	axisXAddr = Dword(currAddr);
+	currAddr = currAddr+4;
+	MakeDword(currAddr);		// Y axis address
+	axisYAddr = Dword(currAddr);
+	currAddr = currAddr+4;
+	MakeDword(currAddr);		// data address
+	dataAddr = Dword(currAddr);
+	currAddr = currAddr+4;
+	MakeDword(currAddr);		// data type
+	dataType = Byte(currAddr);
+	currAddr = currAddr+3;
+	FormatTableAxis(axisYAddr, dataYLength);
+	FormatTableAxis(axisXAddr, dataXLength);
+	FormatTableData(dataAddr, dataYLength*dataXLength, 1, 0, dataType);
+	Print3dTable(axisYAddr, dataYLength, axisXAddr, dataAddr, dataXLength, dataType, 1, 0);
+	return currAddr;
+}
+
 static FormatTableAxis(axisAddr, myLength) {
 	auto i;
 	for ( i=0; i < myLength*4; i=i+4 ) {
@@ -438,7 +495,7 @@ static Print2dTable(axisAddr, dataAddr, dataLength, dataType, dataM, dataA) {
 	writestr(GetArrayElement(AR_LONG, arrayId, 0), 
 		"<table type=\"2D\" name=\"Table at ROM:0x" + ltoa(dataAddr, 16) + " - size " + ltoa(dataLength, 10) + "\" category=\"2D - Tables - " + dataStr + "\" storagetype=\"" + dataType +"\" endian=\"big\" sizey=\"" + dataLength + "\" userlevel=\"4\" logparam=\"unkn\" storageaddress=\"0x" + ltoa(dataAddr, 16) + "\">\n");
 	writestr(GetArrayElement(AR_LONG, arrayId, 0), 
-		"\t<scaling units=\"Unknown\" expression=\"x*" + form("%1.6f",dataM) + "+" + form("%1.6f",dataA) + "\" to_byte=\"(x-" + form("%1.6f",dataA) + ")/" + form("%1.6f",dataM) + "\" format=\"0.000\" fineincrement=\".01\" coarseincrement=\".1\" />\n");
+		"\t<scaling units=\"Unknown\" " + CreateExpression(dataM, dataA) + "\" format=\"0.000\" fineincrement=\".01\" coarseincrement=\".1\" />\n");
 	writestr(GetArrayElement(AR_LONG, arrayId, 0), 
 		"\t<table type=\"Y Axis\" name=\"Axis 0x" + ltoa(axisAddr, 16) + "\" storagetype=\"float\" endian=\"big\" logparam=\"unkn\" storageaddress=\"0x" + ltoa(axisAddr, 16) + "\">\n");
 	writestr(GetArrayElement(AR_LONG, arrayId, 0), 
@@ -484,9 +541,9 @@ static Print3dTable(axisYAddr, dataYLength, axisXAddr, dataAddr, dataXLength, da
 	dataYLength = form("%d", dataYLength);
 	dataXLength = form("%d", dataXLength);
 	writestr(GetArrayElement(AR_LONG, arrayId, 0), 
-		"<table type=\"3D\" name=\"Table at ROM:0x" + ltoa(dataAddr, 16) + " - size " + ltoa(dataXLength, 10) + " x " + ltoa(dataYLength, 10) + "\" category=\"3D - Tables - " + dataStr + "\" storagetype=\"" + dataType +"\" endian=\"big\" sizey=\"" + dataYLength + "\" sizex=\"" + dataXLength + "\" userlevel=\"4\" logparam=\"unkn\" storageaddress=\"0x" + ltoa(dataAddr, 16) + "\">\n");
+		"<table type=\"3D\" name=\"Table at ROM:0x" + ltoa(dataAddr, 16) + " - size " + ltoa(dataXLength, 10) + " x " + ltoa(dataYLength, 10) + "\" category=\"3D - Tables - " + dataStr + "\" storagetype=\"" + dataType +"\" endian=\"big\" sizex=\"" + dataXLength + "\" sizey=\"" + dataYLength + "\" userlevel=\"4\" logparam=\"unkn\" storageaddress=\"0x" + ltoa(dataAddr, 16) + "\">\n");
 	writestr(GetArrayElement(AR_LONG, arrayId, 0), 
-		"\t<scaling units=\"Unknown\" expression=\"x*" + form("%1.6f",dataM) + "+" + form("%1.6f",dataA) + "\" to_byte=\"(x-" + form("%1.6f",dataA) + ")/" + form("%1.6f",dataM) + "\" format=\"0.000\" fineincrement=\".01\" coarseincrement=\".1\" />\n");
+		"\t<scaling units=\"Unknown\" " + CreateExpression(dataM, dataA) + "\" format=\"0.000\" fineincrement=\".01\" coarseincrement=\".1\" />\n");
 	writestr(GetArrayElement(AR_LONG, arrayId, 0), 
 		"\t<table type=\"X Axis\" name=\"X Axis 0x" + ltoa(axisXAddr, 16) + "\" storagetype=\"float\" endian=\"big\" logparam=\"unkn\" storageaddress=\"0x" + ltoa(axisXAddr, 16) + "\">\n");
 	writestr(GetArrayElement(AR_LONG, arrayId, 0), 
@@ -497,4 +554,30 @@ static Print3dTable(axisYAddr, dataYLength, axisXAddr, dataAddr, dataXLength, da
 		"\t\t<scaling units=\"Unknown\" expression=\"x\" to_byte=\"x\" format=\"0.00\" fineincrement=\"1\" coarseincrement=\"5\" />\n");
 	writestr(GetArrayElement(AR_LONG, arrayId, 0), 
 		"\t</table>\n\t<description>no description</description>\n</table>\n");
+}
+
+static CreateExpression(dataM, dataA) {
+	auto fromByte, toByte, negate;
+	negate = 0.0 - 1.0;
+	if (form("%1.8f",dataM) == "1.0" && form("%1.8f",dataA) == "0.0") {
+		fromByte = "expression=\"x";
+		toByte   = "to_byte=\"x";
+	}
+	else if (form("%1.8f",dataM) == "1.0" && dataA < 0.0) {
+		fromByte = "expression=\"x" + form("%1.8f",dataA);
+		toByte   = "to_byte=\"x+" + form("%1.8f",(dataA * negate));
+	}
+	else if (form("%1.8f",dataM) != "1.0" && dataA < 0.0) {
+		fromByte = "expression=\"(x*" + form("%1.8f",dataM) + ")" + form("%1.8f",dataA);
+		toByte   = "to_byte=\"(x+" + form("%1.8f",(dataA * negate)) + ")/" + form("%1.8f",dataM);
+	}
+	else if (form("%1.8f",dataM) != "1.0" && form("%1.8f",dataA) == "0.0") {
+		fromByte = "expression=\"x*" + form("%1.8f",dataM);
+		toByte   = "to_byte=\"x/" + form("%1.8f",dataM);
+	}
+	else {
+		fromByte = "expression=\"(x*" + form("%1.8f",dataM) + ")+" + form("%1.8f",dataA);
+		toByte   = "to_byte=\"(x-" + form("%1.8f",dataA) + ")/" + form("%1.8f",dataM);
+	}
+	return fromByte + "\" " + toByte;
 }
