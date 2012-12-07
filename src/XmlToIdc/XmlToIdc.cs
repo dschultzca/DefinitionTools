@@ -1,33 +1,40 @@
-﻿/*
+/*
  * Copyright (C) 2012  NSFW@romraider.forum and Dale C. Schultz
  * RomRaider member ID: NSFW and dschultz
  *
  * You are free to use this script for any purpose, but please keep
  * notice of where it came from!
  */
- 
+
 using System;
 using System.IO;
 using System.Collections.Generic;
-//using System.Linq;
-using System.Text;
 using System.Xml;
 using System.Xml.XPath;
+using System.Text;
+using System.Windows.Forms;
+using System.Reflection;
 
 namespace NSFW.XmlToIdc
 {
     class Program
     {
         private static HashSet<string> names = new HashSet<string>();
-
+        private static IDictionary<string, string> tableList = new Dictionary<string, string>();
+        
         static void Main(string[] args)
         {
+            Console.WriteLine("///////////////////////////////////////////////////////////////////////////////");
+            Console.WriteLine("// This file gernerated by XmlToIdc version: {0}",
+                              Assembly.GetExecutingAssembly().GetName().Version);
+            Console.WriteLine("// running on mscorlib.dll version: {0}",
+                              typeof(String).Assembly.GetName().Version);
             if (args.Length == 0)
             {
                 Usage();
                 return;
             }
-
+            
             if (CategoryIs(args, "tables"))
             {
                 if (args.Length != 2)
@@ -36,7 +43,10 @@ namespace NSFW.XmlToIdc
                 }
                 else
                 {
-                    DefineTables(args[1]);
+                    string calId = args[1].ToUpper();
+                    string functionName = "Tables_" + calId;
+                    WriteHeader1(functionName, string.Format("Table definitions for {0}", calId));
+                    DefineTables(functionName, calId);
                 }
             }
             else if (CategoryIs(args, "stdparam"))
@@ -47,93 +57,272 @@ namespace NSFW.XmlToIdc
                 }
                 else
                 {
-                    DefineStandardParameters(args[1], args[2], args[3]);
+                    string target = args[1].ToUpper();
+                    string calId = args[2].ToUpper();
+                    string ssmBaseString = args[3].ToUpper();
+                    string functionName = "StdParams_" + calId;
+                    WriteHeader1(functionName,
+                                 string.Format("Standard parameter definitions for {0}: {1} with SSM read vector base {2}",
+                                  target, calId, ssmBaseString));
+                    DefineStandardParameters(functionName, target, calId, ssmBaseString);
                 }
             }
             else if (CategoryIs(args, "extparam"))
             {
-                if (args.Length != 3)
+                if (args.Length != 4)
                 {
                     UsageExtParam();
                     return;
                 }
                 else
                 {
-                    DefineExtendedParameters(args[1], args[2]);
+                    string target = args[1].ToUpper();
+                    string cpu = args[2];
+                    string ecuId = args[3].ToUpper();
+                    string functionName = "ExtParams_" + ecuId;
+                    WriteHeader1(functionName,
+                                 string.Format("Extended parameter definitions for {0}bit {1}: {2}",
+                                  cpu, target, ecuId));
+                    DefineExtendedParameters(functionName, target, ecuId, cpu);
+                }
+            }
+            else if (CategoryIs(args, "makeall"))
+            {
+                if (args.Length != 4)
+                {
+                    UsageMakeAll();
+                    return;
+                }
+                else
+                {
+                    string target = args[1].ToUpper();
+                    string calId = args[2].ToUpper();
+                    string ssmBaseString = args[3].ToUpper();
+                    string functionName1 = "Tables";
+                    string functionName2 = "StdParams";
+                    string functionName3 = "ExtParams";
+                    WriteHeader3(functionName1, functionName2, functionName3,
+                                 string.Format("All definitions for {0}: {1} with SSM read vector base {2}",
+                                  target, calId, ssmBaseString));
+                    string[] results = new string[2];
+                    results = DefineTables(functionName1, calId);
+                    DefineStandardParameters(functionName2, target, calId, ssmBaseString);
+                    DefineExtendedParameters(functionName3, target, results[0], results[1]);
                 }
             }
         }
-
+        
         #region DefineXxxx functions
-
-        private static void DefineTables(string calId)
+        
+        private static string[] DefineTables(string functionName, string calId)
         {
             if (!File.Exists("ecu_defs.xml"))
             {
-                Console.Write("Error: ecu_defs.xml must be in the current directory.");
-                return;
+                MessageBox.Show("ecu_defs.xml must be in the current directory.",
+                                "Error - ECU Definitions File Missing",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Exclamation,
+                                MessageBoxDefaultButton.Button1);
+                return null;
             }
-            calId = calId.ToUpper();
-
-            string functionName = "Tables_" + calId;
-            WriteHeader(functionName, "Table definitions for " + calId);
-            WriteTableNames(calId);
+            string[] results = new string[2];
+            WriteHeader2(functionName);
+            results = WriteTableNames(calId);
             WriteFooter(functionName);
+            return results;
         }
-
-        private static void DefineStandardParameters(string target, string calId, string ssmBaseString)
+        
+        private static void DefineStandardParameters(string functionName, string target, string calId, string ssmBaseString)
         {
             if (!File.Exists("logger.xml"))
             {
-                Console.Write("Error: logger.xml must be in the current directory.");
+                MessageBox.Show("logger.xml must be in the current directory.",
+                                "Error - Logger Definitions File Missing",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Exclamation,
+                                MessageBoxDefaultButton.Button1);
                 return;
             }
-
+            
             if (!File.Exists("logger.dtd"))
             {
-                Console.Write("Error: logger.dtd must be in the current directory.");
+                MessageBox.Show("logger.dtd must be in the current directory.",
+                                "Error - Logger Type Definition File Missing",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Exclamation,
+                                MessageBoxDefaultButton.Button1);
                 return;
             }
-
-            calId = calId.ToUpper();
+            
             ssmBaseString = ssmBaseString.ToUpper();
             uint ssmBase = uint.Parse(ssmBaseString, System.Globalization.NumberStyles.HexNumber);
-
-            string functionName = "StdParams_" + calId;
-            WriteHeader(functionName, "Standard parameter definitions for " + target.ToUpper() + ": " + calId + " with SSM read vector base " + ssmBaseString);
+            
+            WriteHeader2(functionName);
             WriteStandardParameters(target, calId, ssmBase);
             WriteFooter(functionName);
         }
-
-        private static void DefineExtendedParameters(string target, string ecuId)
+        
+        private static void DefineExtendedParameters(string functionName, string target, string ecuId, string cpu)
         {
             if (!File.Exists("logger.xml"))
             {
-                Console.Write("Error: logger.xml must be in the current directory.");
+                MessageBox.Show("logger.xml must be in the current directory.",
+                                "Error - Logger Definitions File Missing",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Exclamation,
+                                MessageBoxDefaultButton.Button1);
                 return;
             }
-
+            
             if (!File.Exists("logger.dtd"))
             {
-                Console.Write("Error: logger.dtd must be in the current directory.");
+                MessageBox.Show("logger.dtd must be in the current directory.",
+                                "Error - Logger Type Definition File Missing",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Exclamation,
+                                MessageBoxDefaultButton.Button1);
                 return;
             }
-
-            ecuId = ecuId.ToUpper();
-
-            string functionName = "ExtParams_" + ecuId;
-            WriteHeader(functionName, "Extended parameter definitions for " + target.ToUpper() + ": " + ecuId);
-            WriteExtendedParameters(target, ecuId);
+            
+            WriteHeader2(functionName);
+            WriteExtendedParameters(target, ecuId, cpu);
             WriteFooter(functionName);
         }
-
-        #endregion
-
-        private static string WriteTableNames(string xmlId)
+        
+#endregion
+        
+        private static string[] WriteTableNames(string xmlId)
         {
             Console.WriteLine("auto referenceAddress;");
-
-            string ecuid = null;
+            
+            string ecuid      = null;
+            string memmodel   = null;
+            int    tableCount = 0;
+            string datatype   = null;
+            bool   ecu16bit   = false;
+            int    dtaddr     = 0;
+            string cpu        = "32";
+            
+            string rombase = GetRomBase(xmlId);
+            string[] roms = new string[2] {rombase, xmlId};
+            
+            using (Stream stream = File.OpenRead("ecu_defs.xml"))
+            {
+                XPathDocument doc = new XPathDocument(stream);
+                XPathNavigator nav = doc.CreateNavigator();
+                foreach (string id in roms)
+                {
+                    tableCount = 0;
+                    names.Clear();
+                    if (id.Contains("BASE"))
+                    {
+                        continue;
+                    }
+                    else if (id.Equals(rombase))
+                    {
+                        Console.WriteLine("Warning(\"Marking tables using addresses from inherited base ROM: " +
+                                          id.ToUpper() + "\");");
+                    }
+                    string path = "/roms/rom/romid[xmlid='" + id + "']";
+                    XPathNodeIterator iter = nav.Select(path);
+                    iter.MoveNext();
+                    nav = iter.Current;
+                    nav.MoveToChild(XPathNodeType.Element);
+                    
+                    while (nav.MoveToNext())
+                    {
+                        if (nav.Name == "ecuid")
+                        {
+                            ecuid = nav.InnerXml;
+                        }
+                        if (nav.Name == "memmodel")
+                        {
+                            memmodel = nav.InnerXml;
+                            break;
+                        }
+                    }
+                    
+                    if (string.IsNullOrEmpty(ecuid))
+                    {
+                        Console.WriteLine("Could not find definition for " + id);
+                        return null;
+                    }
+                    if (memmodel.Contains("68HC"))
+                    {
+                        ecu16bit = true;
+                        cpu = "16";
+                    }
+                    
+                    nav.MoveToParent();
+                    while (nav.MoveToNext())
+                    {
+                        if (nav.Name == "table")
+                        {
+                            string name = nav.GetAttribute("name", "");
+                            string storageAddress = nav.GetAttribute("storageaddress", "");
+                            
+                            name = ConvertName(name);
+                            UpdateTableList(name, storageAddress);
+                            if (ecu16bit)
+                            {
+                                datatype = ConvertName("Table_" + name);
+                                dtaddr = Convert.ToInt32(storageAddress , 16);
+                                dtaddr = dtaddr - 1;
+                            }
+                            
+                            List<string> axes = new List<string>();
+                            if (nav.HasChildren)
+                            {
+                                nav.MoveToChild(XPathNodeType.Element);
+                                
+                                do
+                                {
+                                    string axis = nav.GetAttribute("type", "");
+                                    axes.Add(axis);
+                                    string axisAddress = nav.GetAttribute("storageaddress", "");
+                                    
+                                    axis = ConvertName(name + "_" + axis);
+                                    UpdateTableList(axis, axisAddress);
+                                } while (nav.MoveToNext());
+                                
+                                if (axes.Count == 2 &&
+                                    (axes[0].ToUpper() == "X AXIS" && axes[1].ToUpper() == "Y AXIS") &&
+                                    !ecu16bit)
+                                {
+                                    string tableName = ConvertName("Table_" + name);
+                                    UpdateTableList(tableName, "2axis");
+                                }
+                                else if (axes.Count == 1 &&
+                                         axes[0].ToUpper() == "Y AXIS" &&
+                                         !ecu16bit)
+                                {
+                                    string tableName = ConvertName("Table_" + name);
+                                    UpdateTableList(tableName, "1axis");
+                                }
+                                else if (axes.Count > 0 && ecu16bit && axes[0].ToUpper().Contains("AXIS"))
+                                {
+                                    string dataTypeAddr = "0x" + dtaddr.ToString("X");
+                                    UpdateTableList(datatype, dataTypeAddr);
+                                }
+                                nav.MoveToParent();
+                            }
+                            tableCount++;
+                        }
+                    }
+                    if (tableCount < 1)
+                    {
+                        Console.WriteLine("// No tables found specifically for ROM " + id + ", used inherited ROM");
+                    }
+                }
+                WriteIdcTableNames();
+            }
+            string[] results = new string[2]{ecuid, cpu};
+            return results;
+        }
+        
+        private static string GetRomBase(string xmlId)
+        {
+            string rombase = "";
             using (Stream stream = File.OpenRead("ecu_defs.xml"))
             {
                 XPathDocument doc = new XPathDocument(stream);
@@ -143,93 +332,75 @@ namespace NSFW.XmlToIdc
                 iter.MoveNext();
                 nav = iter.Current;
                 nav.MoveToChild(XPathNodeType.Element);
-
-                while (nav.MoveToNext())
+                do
                 {
-                    if (nav.Name == "ecuid")
+                    nav.MoveToParent();
+                } while (nav.Name != "rom");
+                
+                if (nav.Name == "rom")
+                {
+                    rombase = nav.GetAttribute("base", "");
+                }
+            }
+            return rombase;
+        }
+        
+        private static void WriteIdcTableNames()
+        {
+            foreach (var pair in tableList)
+            {
+                string tableName = pair.Key;
+                string tableAddress = pair.Value;
+                string refTableName = "Table_" + tableName;
+                string refTableAddress = "";
+                if (tableList.TryGetValue(refTableName, out refTableAddress))
+                {
+                    if (!tableName.StartsWith("Table_") && refTableAddress.Equals("2axis"))
                     {
-                        ecuid = nav.InnerXml;
-                        break;
+                        MakeName(tableAddress, tableName);
+                        Console.WriteLine("referenceAddress = DfirstB(" + tableAddress + ");");
+                        Console.WriteLine("if (referenceAddress > 0)");
+                        Console.WriteLine("{");
+                        Console.WriteLine("    referenceAddress = referenceAddress - 12;");
+                        string command = string.Format("    MakeNameEx(referenceAddress, \"{0}\", SN_CHECK);", refTableName);
+                        Console.WriteLine(command);
+                        Console.WriteLine("}");
+                        Console.WriteLine("else");
+                        Console.WriteLine("{");
+                        Console.WriteLine("    Message(\"No reference to " + tableName + "\\n\");");
+                        Console.WriteLine("}");
+                    }
+                    else if (!tableName.StartsWith("Table_") && refTableAddress.Equals("1axis"))
+                    {
+                        MakeName(tableAddress, tableName);
+                        Console.WriteLine("referenceAddress = DfirstB(" + tableAddress + ");");
+                        Console.WriteLine("if (referenceAddress > 0)");
+                        Console.WriteLine("{");
+                        Console.WriteLine("    referenceAddress = referenceAddress - 8;");
+                        string command = string.Format("    MakeNameEx(referenceAddress, \"{0}\", SN_CHECK);", refTableName);
+                        Console.WriteLine(command);
+                        Console.WriteLine("}");
+                        Console.WriteLine("else");
+                        Console.WriteLine("{");
+                        Console.WriteLine("    Message(\"No reference to " + tableName + "\\n\");");
+                        Console.WriteLine("}");
+                    }
+                    else
+                    {
+                        MakeName(tableAddress, tableName);
                     }
                 }
-
-                if (string.IsNullOrEmpty(ecuid))
+                else
                 {
-                    Console.WriteLine("Could not find definition for " + xmlId);
-                    return null;
-                }
-
-                nav.MoveToParent();
-                while (nav.MoveToNext())
-                {
-                    if (nav.Name == "table")
+                    if (!tableName.StartsWith("Table_") ||
+                        tableName.StartsWith("Table_") && !tableAddress.Contains("axis"))
                     {
-                        Console.WriteLine();
-
-                        string name = nav.GetAttribute("name", "");
-                        string storageAddress = nav.GetAttribute("storageaddress", "");
-
-                        name = ConvertName(name);
-                        MakeName(storageAddress, name);
-
-                        List<string> axes = new List<string>();
-                        if (nav.HasChildren)
-                        {
-                            nav.MoveToChild(XPathNodeType.Element);
-
-                            do
-                            {
-                                string axis = nav.GetAttribute("type", "");
-                                axes.Add(axis);
-                                string axisAddress = nav.GetAttribute("storageaddress", "");
-
-                                axis = ConvertName(name + "_" + axis);
-                                MakeName(axisAddress, axis);
-                            } while (nav.MoveToNext());
-
-                            if (axes.Count == 2 &&
-                                (axes[0] == "X Axis" &&
-                                axes[1] == "Y Axis"))
-                            {
-                                Console.WriteLine("referenceAddress = DfirstB(" + storageAddress + ");");
-                                Console.WriteLine("if (referenceAddress > 0)");
-                                Console.WriteLine("{");
-                                Console.WriteLine("    referenceAddress = referenceAddress - 12;");
-                                string tableName = ConvertName("Table_" + name);
-                                string command = string.Format("    MakeNameEx(referenceAddress, \"{0}\", SN_CHECK);", tableName);
-                                Console.WriteLine(command);
-                                Console.WriteLine("}");
-                                Console.WriteLine("else");
-                                Console.WriteLine("{");
-                                Console.WriteLine("    Message(\"No reference to " + name + "\\n\");");
-                                Console.WriteLine("}");
-                            }
-                            else if (axes.Count == 1 &&
-                                axes[0] == "Y Axis")
-                            {
-                                Console.WriteLine("referenceAddress = DfirstB(" + storageAddress + ");");
-                                Console.WriteLine("if (referenceAddress > 0)");
-                                Console.WriteLine("{");
-                                Console.WriteLine("    referenceAddress = referenceAddress - 8;");
-                                string tableName = ConvertName("Table_" + name);
-                                string command = string.Format("    MakeNameEx(referenceAddress, \"{0}\", SN_CHECK);", tableName);
-                                Console.WriteLine(command);
-                                Console.WriteLine("}");
-                                Console.WriteLine("else");
-                                Console.WriteLine("{");
-                                Console.WriteLine("    Message(\"No reference to " + name + "\\n\");");
-                                Console.WriteLine("}");
-                            }
-
-                            nav.MoveToParent();
-                        }
+                        MakeName(tableAddress, tableName);
                     }
                 }
             }
-
-            return ecuid;
         }
-
+        
         private static void WriteStandardParameters(string target, string ecuid, uint ssmBase)
         {
             Console.WriteLine("auto addr;");
@@ -242,7 +413,7 @@ namespace NSFW.XmlToIdc
             {
                 target = "1";
             }
-
+            
             using (Stream stream = File.OpenRead("logger.xml"))
             {
                 XPathDocument doc = new XPathDocument(stream);
@@ -262,33 +433,33 @@ namespace NSFW.XmlToIdc
                     name = name + "_" + id.Trim();
                     string pointerName = ConvertName("PtrSsmGet_" + name);
                     string functionName = ConvertName("SsmGet_" + name);
-
+                    
                     if (!navigator.MoveToChild("address", ""))
                     {
                         continue;
                     }
-
+                    
                     string addressString = iter.Current.InnerXml;
                     addressString = addressString.Substring(2);
-
+                    
                     uint address = uint.Parse(addressString, System.Globalization.NumberStyles.HexNumber);
                     address = address * 4;
                     address = address + ssmBase;
                     addressString = "0x" + address.ToString("X8");
-
+                    
                     MakeName(addressString, pointerName);
-
+                    
                     string getAddress = string.Format("addr = Dword({0});", addressString);
                     Console.WriteLine(getAddress);
                     MakeName("addr", functionName);
                     Console.WriteLine();
                 }
                 // now let's print the switch references
+                // Name format: Switches_b7_b6_b5_b4_b3_b2_b1_b0
+                IDictionary<string, Array> switchList = new Dictionary<string, Array>();
                 path = "/logger/protocols/protocol[@id='SSM']/switches/switch";
                 iter = nav.Select(path);
-                string bitString = "";
-                string lastAddr = "";
-                uint first = 1;
+                string bit = "";
                 while (iter.MoveNext())
                 {
                     XPathNavigator navigator = iter.Current;
@@ -300,22 +471,25 @@ namespace NSFW.XmlToIdc
                     id = id.Replace("S", "");
                     string addr = navigator.GetAttribute("byte", "");
                     addr = addr.Substring(2);
-                    if (lastAddr.Equals(addr) || first.Equals(1))
+                    bit = navigator.GetAttribute("bit", "");
+                    Array values;
+                    if (!switchList.TryGetValue(addr, out values))
                     {
-                        bitString = bitString + "_" + id.Trim();
-                        first = 0;
+                        string[] temp = new string[8] {"x","x","x","x","x","x","x","x"};
+                        switchList.Add(addr, temp);
                     }
-                    else
+                    if (switchList.TryGetValue(addr, out values))
                     {
-                        bitString = PrintSwitches(bitString, lastAddr, ssmBase, id);
+                        uint i = uint.Parse(bit, System.Globalization.NumberStyles.HexNumber);
+                        values.SetValue(id.Trim(), i);
+                        Array.Copy(values, switchList[addr], values.Length);
                     }
-                    lastAddr = addr;
                 }
-                bitString = PrintSwitches(bitString, lastAddr, ssmBase, id);
+                PrintSwitches(switchList, ssmBase);
             }
         }
-
-        private static void WriteExtendedParameters(string target, string ecuid)
+        
+        private static void WriteExtendedParameters(string target, string ecuid, string cpu)
         {
             if (target == "ecu" | target == "ECU")
             {
@@ -325,7 +499,7 @@ namespace NSFW.XmlToIdc
             {
                 target = "1";
             }
-
+            
             using (Stream stream = File.OpenRead("logger.xml"))
             {
                 XPathDocument doc = new XPathDocument(stream);
@@ -337,10 +511,14 @@ namespace NSFW.XmlToIdc
                     string addressString = iter.Current.InnerXml;
                     addressString = addressString.Substring(2);
                     uint address = uint.Parse(addressString, System.Globalization.NumberStyles.HexNumber);
-                    address |= 0xFF000000;
+                    if (cpu.Contains("32"))
+                    {
+                        address |= 0xFF000000;
+                    }
                     addressString = "0x" + address.ToString("X8");
-
+                    
                     XPathNavigator n = iter.Current;
+                    string length = n.GetAttribute("length", "");
                     n.MoveToParent();
                     n.MoveToParent();
                     if (n.GetAttribute("target", "") == target)
@@ -350,15 +528,16 @@ namespace NSFW.XmlToIdc
                     string name = n.GetAttribute("name", "");
                     string id = n.GetAttribute("id", "");
                     name = "E_" + ConvertName(name) + "_" + id.Trim();
-
+                    
                     MakeName(addressString, name);
+                    FormatData(addressString, length);
                 }
             }
         }
-
+        
         #region Utility functions
-
-        private static void WriteHeader(string functionName, string description)
+        
+        private static void WriteHeader1(string functionName, string description)
         {
             Console.WriteLine("///////////////////////////////////////////////////////////////////////////////");
             Console.WriteLine("// " + description);
@@ -366,61 +545,99 @@ namespace NSFW.XmlToIdc
             Console.WriteLine("#include <idc.idc>");
             Console.WriteLine("static main ()");
             Console.WriteLine("{");
+            Console.WriteLine("    " + functionName + " ();");
+            Console.WriteLine("}");
+            Console.WriteLine();
         }
-
+        
+        private static void WriteHeader2(string functionName)
+        {
+            Console.WriteLine("static " + functionName + " ()");
+            Console.WriteLine("{");
+        }
+        
+        private static void WriteHeader3(string functionName1, string functionName2, string functionName3, string description)
+        {
+            Console.WriteLine("///////////////////////////////////////////////////////////////////////////////");
+            Console.WriteLine("// " + description);
+            Console.WriteLine("///////////////////////////////////////////////////////////////////////////////");
+            Console.WriteLine("#include <idc.idc>");
+            Console.WriteLine("static main ()");
+            Console.WriteLine("{");
+            Console.WriteLine("    " + functionName1 + " ();");
+            Console.WriteLine("    " + functionName2 + " ();");
+            Console.WriteLine("    " + functionName3 + " ();");
+            Console.WriteLine("}");
+            Console.WriteLine();
+        }
+        
         private static void WriteFooter(string functionName)
         {
-            Console.WriteLine("}");
-        }
-
-        private static string PrintSwitches(string bitString, string lastAddr, uint ssmBase, string id)
-        {
-            string name = "Switches" + bitString;
-            string pointerName = ConvertName("PtrSsmGet_" + name);
-            string functionName = ConvertName("SsmGet_" + name);
-            uint address = uint.Parse(lastAddr, System.Globalization.NumberStyles.HexNumber);
-            address = address * 4;
-            address = address + ssmBase;
-            string addressString = "0x" + address.ToString("X8");
-
-            MakeName(addressString, pointerName);
-
-            string getAddress = string.Format("addr = Dword({0});", addressString);
-            Console.WriteLine(getAddress);
-            MakeName("addr", functionName);
+            Console.WriteLine("}   // end of " + functionName);
             Console.WriteLine();
-            return bitString = "_" + id.Trim();
         }
-
+        
+        private static void PrintSwitches (IDictionary<string, Array> switchList, uint ssmBase)
+        {
+            Console.WriteLine("// Switch Bit Position Name format: Switches_b7_b6_b5_b4_b3_b2_b1_b0");
+            foreach (var pair in switchList)
+            {
+                string[] switches = new string[8];
+                Array.Copy (pair.Value, switches, 8);
+                string bitString = "";
+                for (int j = switches.Length; j != 0; j--)
+                {
+                    bitString = string.Format("{0}_{1}", bitString, switches[j-1]);
+                }
+                
+                string name = "Switches" + bitString;
+                string pointerName = ConvertName ("PtrSsmGet_" + name);
+                string functionName = ConvertName ("SsmGet_" + name);
+                uint address = uint.Parse (pair.Key, System.Globalization.NumberStyles.HexNumber);
+                address = address * 4;
+                address = address + ssmBase;
+                string addressString = "0x" + address.ToString ("X8");
+                
+                MakeName (addressString, pointerName);
+                
+                string getAddress = string.Format("addr = Dword({0});", addressString);
+                Console.WriteLine(getAddress);
+                MakeName("addr", functionName);
+                Console.WriteLine();
+            }
+        }
+        
         private static void MakeName(string address, string name)
         {
-            string command = string.Format("MakeNameEx({0}, \"{1}\", SN_CHECK);",
-                address,
-                name);
-            Console.WriteLine(command);
+            if(address.Length > 0 && name.Length > 0)
+            {
+                string command = string.Format("MakeNameEx({0}, \"{1}\", SN_CHECK);",
+                                               address,
+                                               name);
+                Console.WriteLine(command);
+            }
         }
-
+        
+        private static void UpdateTableList(string name, string address)
+        {
+            if(address.Length > 0 && name.Length > 0)
+            {
+                string tmpAddr;
+                if (tableList.TryGetValue(name, out tmpAddr))
+                {
+                    tableList[name] = address;
+                }
+                else
+                {
+                    tableList.Add(name, address);
+                }
+            }
+        }
+        
         private static string ConvertName(string original)
         {
-            // two brute force search and replace sequences for trailing spaces in names
-            // another option is to just convert all " " to _
-            //if (original.EndsWith("  "))
-            //{
-            //    int lastLocation = original.LastIndexOf("  ");
-
-            //    if (lastLocation >= 0)
-            //        original = original.Substring(0, lastLocation) + "__";
-            //}
-
-            //if (original.EndsWith(" "))
-            //{
-            //    int lastLocation = original.LastIndexOf(" ");
-
-            //    if (lastLocation >= 0)
-            //        original = original.Substring(0, lastLocation) + "_";
-            //}
             original = original.Replace(")(", "_");
-
+            
             StringBuilder builder = new StringBuilder(original.Length);
             foreach (char c in original)
             {
@@ -429,26 +646,26 @@ namespace NSFW.XmlToIdc
                     builder.Append(c);
                     continue;
                 }
-
+                
                 if (c == '_')
                 {
                     builder.Append(c);
                     continue;
                 }
-
+                
                 if (char.IsWhiteSpace(c))
                 {
                     builder.Append('_');
                     continue;
                 }
-
+                
                 if (c == '*')
                 {
                     builder.Append("Ext");
                     continue;
                 }
             }
-
+            
             // Make sure it's unique
             string name = builder.ToString();
             while (names.Contains(name))
@@ -456,74 +673,131 @@ namespace NSFW.XmlToIdc
                 name = name + "_";
             }
             names.Add(name);
-
+            
             return name;
         }
-
+        
         private static bool CategoryIs(string[] args, string category)
         {
             return string.Compare(args[0], category, StringComparison.OrdinalIgnoreCase) == 0;
         }
-
-        #endregion
-
+        
+        private static void FormatData(string address, string length)
+        {
+            string datatype = "";
+            if (length == "")
+            {
+                datatype = "MakeByte";
+                length = "1";
+            }
+            else if (length == "2")
+            {
+                datatype = "MakeWord";
+            }
+            else if (length == "4")
+            {
+                datatype = "MakeFloat";
+            }
+            if (datatype != "")
+            {
+                string unknown = string.Format("MakeUnknown({0}, {1}, DOUNK_SIMPLE);",
+                                               address, length);
+                Console.WriteLine(unknown);
+                string command = string.Format("{0}({1});",
+                                               datatype,
+                                               address);
+                Console.WriteLine(command);
+            }
+        }
+        
+#endregion
+        
         #region Usage instructions
-
+        
         private static void Usage()
         {
-            Console.WriteLine("XmlToIdc Usage:");
-            Console.WriteLine("XmlToIdc.exe <category> ...");
-            Console.WriteLine();
-            Console.WriteLine("Where <category> is one of the following:");
-            Console.WriteLine("    tables <cal-id>");
-            Console.WriteLine("    stdparam <target> <cal-id> <ssm-base>");
-            Console.WriteLine("    extparam <target> <ecu-id>");
-            Console.WriteLine();
-            Console.WriteLine("target: Car control module, e.g. ecu for engine control unit or tcu for transmission control unit");
-            Console.WriteLine("ecu-id: ECU identifier, e.g. 2F12785606");
-            Console.WriteLine("cal-id: Calibration id, e.g. A2WC522N");
-            Console.WriteLine("ssm-base: Base address of the SSM 'read' vector, e.g. 4EDDC");
-            Console.WriteLine();
-            Console.WriteLine("And you'll want to redirect stdout to a file, like:");
-            Console.WriteLine("XmlToIdc.exe ... > Whatever.idc");
+            StringBuilder builder = new StringBuilder();
+            builder.AppendLine("XmlToIdc Usage:");
+            builder.AppendLine("XmlToIdc.exe <category> ...");
+            builder.AppendLine();
+            builder.AppendLine("Where <category> is one of the following:");
+            builder.AppendLine("    tables <cal-id>");
+            builder.AppendLine("    stdparam <target> <cal-id> <ssm-base>");
+            builder.AppendLine("    extparam <target> <cpu> <ecu-id>");
+            builder.AppendLine("    makeall  <target> <cal-id> <ssm-base>");
+            builder.AppendLine();
+            builder.AppendLine("<target>   is the Car control module,");
+            builder.AppendLine("             e.g. ecu (engine control unit) or tcu (transmission control unit)");
+            builder.AppendLine("<cpu>      is the CPU bits identifier of the ECU, e.g. 16 or 32");
+            builder.AppendLine("<ecu-id>   is the ECU identifier, e.g. 2F12785506");
+            builder.AppendLine("<cal-id>   is the Calibration id, e.g. A2WC521N");
+            builder.AppendLine("<ssm-base> is the Base address of the SSM 'read' vector, e.g. 4EDDC");
+            builder.AppendLine();
+            builder.AppendLine("And you'll want to redirect stdout to a file, like:");
+            builder.AppendLine("XmlToIdc.exe ... > Whatever.idc");
+            MessageBox.Show(builder.ToString(), "XmlToIdc Usage Help");
         }
-
+        
         private static void UsageTables()
         {
-            Console.WriteLine("XmlToIdc Usage:");
-            Console.WriteLine("XmlToIdc.exe tables <cal-id>");
-            Console.WriteLine();
-            Console.WriteLine("cal-id: Calibration id, e.g. A2WC522N");
-            Console.WriteLine();
-            Console.WriteLine("And you'll want to redirect stdout to a file, like:");
-            Console.WriteLine("XmlToIdc.exe tables A2WC522N > Tables.idc");
+            StringBuilder builder = new StringBuilder();
+            builder.AppendLine("XmlToIdc tables Usage:");
+            builder.AppendLine("XmlToIdc.exe tables <cal-id>");
+            builder.AppendLine();
+            builder.AppendLine("<cal-id> is the Calibration id, e.g. A2WC521N");
+            builder.AppendLine();
+            builder.AppendLine("And you'll want to redirect stdout to a file, like:");
+            builder.AppendLine("XmlToIdc.exe tables A2WC521N > Tables.idc");
+            MessageBox.Show(builder.ToString(), "XmlToIdc tables Usage Help");
         }
-
+        
         private static void UsageStdParam()
         {
-            Console.WriteLine("StdParam Usage:");
-            Console.WriteLine("XmlToIdc.exe stdparam <target> <cal-id> <ssm-base>");
-            Console.WriteLine();
-            Console.WriteLine("target: Car control module, e.g. tcu for transmission control unit");
-            Console.WriteLine("cal-id: Calibration id, e.g. A2WC522N");
-            Console.WriteLine("ssm-base: Base address of the SSM 'read' vector, e.g. 4EDDC");
-            Console.WriteLine();
-            Console.WriteLine("And you'll want to redirect stdout to a file, like:");
-            Console.WriteLine("XmlToIdc.exe stdparam tcu A2WC522N 4EDDC > StdParam.idc");
+            StringBuilder builder = new StringBuilder();
+            builder.AppendLine("XmlToIdc stdparam Usage:");
+            builder.AppendLine("XmlToIdc.exe stdparam <target> <cal-id> <ssm-base>");
+            builder.AppendLine();
+            builder.AppendLine("<target>   is the Car control module,");
+            builder.AppendLine("             e.g. ecu (engine control unit) or tcu (transmission control unit)");
+            builder.AppendLine("<cal-id>   is the Calibration id, e.g. A2WC521N");
+            builder.AppendLine("<ssm-base> is the Base address of the SSM 'read' vector, e.g. 4EDDC");
+            builder.AppendLine();
+            builder.AppendLine("And you'll want to redirect stdout to a file, like:");
+            builder.AppendLine("XmlToIdc.exe stdparam tcu A2WC521N 4EDDC > StdParam.idc");
+            MessageBox.Show(builder.ToString(), "XmlToIdc stdparam Usage Help");
         }
-
+        
         private static void UsageExtParam()
         {
-            Console.WriteLine("ExtParam Usage:");
-            Console.WriteLine("XmlToIdc.exe extparam <target> <ecu-id>");
-            Console.WriteLine();
-            Console.WriteLine("target: Car control module, e.g. ecu for engine control unit");
-            Console.WriteLine("ecu-id: ECU identifier, e.g. 2F12785606");
-            Console.WriteLine();
-            Console.WriteLine("And you'll want to redirect stdout to a file, like:");
-            Console.WriteLine("XmlToIdc.exe extparam ecu 2F12785606 > ExtParam.idc");
+            StringBuilder builder = new StringBuilder();
+            builder.AppendLine("XmlToIdc extparam Usage:");
+            builder.AppendLine("XmlToIdc.exe extparam <target> <cpu> <ecu-id> ");
+            builder.AppendLine();
+            builder.AppendLine("<target> is the Car control module,");
+            builder.AppendLine("         e.g. ecu (engine control unit) or tcu (transmission control unit)");
+            builder.AppendLine("<cpu>    is the CPU bits identifier of the ECU, e.g. 16 or 32");
+            builder.AppendLine("<ecu-id> is the ECU identifier, e.g. 2F12785506");
+            builder.AppendLine();
+            builder.AppendLine("And you'll want to redirect stdout to a file, like:");
+            builder.AppendLine("XmlToIdc.exe extparam ecu 32 2F12785506> ExtParam.idc");
+            MessageBox.Show(builder.ToString(), "XmlToIdc extparam Usage Help");
         }
-
-        #endregion
+        
+        private static void UsageMakeAll()
+        {
+            StringBuilder builder = new StringBuilder();
+            builder.AppendLine("XmlToIdc makeall Usage:");
+            builder.AppendLine("XmlToIdc.exe makeall <target> <cal-id> <ssm-base>");
+            builder.AppendLine();
+            builder.AppendLine("<target>   is the Car control module,");
+            builder.AppendLine("             e.g. ecu (engine control unit) or tcu (transmission control unit)");
+            builder.AppendLine("<cal-id>   is the Calibration id, e.g. A2WC521N");
+            builder.AppendLine("<ssm-base> is the Base address of the SSM 'read' vector, e.g. 4EDDC");
+            builder.AppendLine();
+            builder.AppendLine("And you'll want to redirect stdout to a file, like:");
+            builder.AppendLine("XmlToIdc.exe makeall ecu A2WC521N 4EDDC > AllParams.idc");
+            MessageBox.Show(builder.ToString(), "XmlToIdc makeall Usage Help");
+        }
+#endregion
     }
 }
