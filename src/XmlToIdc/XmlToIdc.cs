@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012  NSFW@romraider.forum and Dale C. Schultz
+ * Copyright (C) 2012 NSFW@romraider.forum and Dale C. Schultz
  * RomRaider member ID: NSFW and dschultz
  *
  * You are free to use this script for any purpose, but please keep
@@ -51,20 +51,22 @@ namespace NSFW.XmlToIdc
             }
             else if (CategoryIs(args, "stdparam"))
             {
-                if (args.Length != 4)
+                if (args.Length != 5)
                 {
                     UsageStdParam();
                 }
                 else
                 {
-                    string target = args[1].ToUpper();
-                    string calId = args[2].ToUpper();
-                    string ssmBaseString = args[3].ToUpper();
+                    string cpu = args[1];
+                    string target = args[2].ToUpper();
+                    string calId = args[3].ToUpper();
+                    string ssmBaseString = args[4].ToUpper();
                     string functionName = "StdParams_" + calId;
+                    uint ssmBase = ConvertBaseString(ssmBaseString);
                     WriteHeader1(functionName,
-                                 string.Format("Standard parameter definitions for {0}: {1} with SSM read vector base {2}",
-                                  target, calId, ssmBaseString));
-                    DefineStandardParameters(functionName, target, calId, ssmBaseString);
+                                 string.Format("Standard parameter definitions for {0} bit {1}: {2} with SSM read vector base {3}",
+                                  cpu, target, calId, ssmBase.ToString("X")));
+                    DefineStandardParameters(functionName, target, calId, ssmBase, cpu);
                 }
             }
             else if (CategoryIs(args, "extparam"))
@@ -76,12 +78,12 @@ namespace NSFW.XmlToIdc
                 }
                 else
                 {
-                    string target = args[1].ToUpper();
-                    string cpu = args[2];
+                    string cpu = args[1];
+                    string target = args[2].ToUpper();
                     string ecuId = args[3].ToUpper();
                     string functionName = "ExtParams_" + ecuId;
                     WriteHeader1(functionName,
-                                 string.Format("Extended parameter definitions for {0}bit {1}: {2}",
+                                 string.Format("Extended parameter definitions for {0} bit {1}: {2}",
                                   cpu, target, ecuId));
                     DefineExtendedParameters(functionName, target, ecuId, cpu);
                 }
@@ -106,7 +108,8 @@ namespace NSFW.XmlToIdc
                                   target, calId, ssmBaseString));
                     string[] results = new string[2];
                     results = DefineTables(functionName1, calId);
-                    DefineStandardParameters(functionName2, target, calId, ssmBaseString);
+                    uint ssmBase = ConvertBaseString(ssmBaseString);
+                    DefineStandardParameters(functionName2, target, calId, ssmBase, results[1]);
                     DefineExtendedParameters(functionName3, target, results[0], results[1]);
                 }
             }
@@ -132,7 +135,7 @@ namespace NSFW.XmlToIdc
             return results;
         }
         
-        private static void DefineStandardParameters(string functionName, string target, string calId, string ssmBaseString)
+        private static void DefineStandardParameters(string functionName, string target, string calId, uint ssmBase, string cpu)
         {
             if (!File.Exists("logger.xml"))
             {
@@ -154,11 +157,8 @@ namespace NSFW.XmlToIdc
                 return;
             }
             
-            ssmBaseString = ssmBaseString.ToUpper();
-            uint ssmBase = uint.Parse(ssmBaseString, System.Globalization.NumberStyles.HexNumber);
-            
             WriteHeader2(functionName);
-            WriteStandardParameters(target, calId, ssmBase);
+            WriteStandardParameters(target, calId, ssmBase, cpu);
             WriteFooter(functionName);
         }
         
@@ -401,7 +401,7 @@ namespace NSFW.XmlToIdc
             }
         }
         
-        private static void WriteStandardParameters(string target, string ecuid, uint ssmBase)
+        private static void WriteStandardParameters(string target, string ecuid, uint ssmBase, string cpu)
         {
             Console.WriteLine("auto addr;");
             Console.WriteLine("");
@@ -414,6 +414,15 @@ namespace NSFW.XmlToIdc
                 target = "1";
             }
             
+            string ptrName = "PtrSsmGet_";
+            string funcName = "SsmGet_";
+
+            if (cpu.Equals("16"))
+            {
+                ptrName = "PtrSsm_";
+                funcName = "Ssm_";
+            }
+
             using (Stream stream = File.OpenRead("logger.xml"))
             {
                 XPathDocument doc = new XPathDocument(stream);
@@ -431,8 +440,8 @@ namespace NSFW.XmlToIdc
                     string name = navigator.GetAttribute("name", "");
                     id = navigator.GetAttribute("id", "");
                     name = name + "_" + id.Trim();
-                    string pointerName = ConvertName("PtrSsmGet_" + name);
-                    string functionName = ConvertName("SsmGet_" + name);
+                    string pointerName = ConvertName(ptrName + name);
+                    string functionName = ConvertName(funcName + name);
                     
                     if (!navigator.MoveToChild("address", ""))
                     {
@@ -485,7 +494,7 @@ namespace NSFW.XmlToIdc
                         Array.Copy(values, switchList[addr], values.Length);
                     }
                 }
-                PrintSwitches(switchList, ssmBase);
+                PrintSwitches(switchList, ssmBase, cpu);
             }
         }
         
@@ -577,9 +586,19 @@ namespace NSFW.XmlToIdc
             Console.WriteLine();
         }
         
-        private static void PrintSwitches (IDictionary<string, Array> switchList, uint ssmBase)
+        private static void PrintSwitches (IDictionary<string, Array> switchList, uint ssmBase, string cpu)
         {
             Console.WriteLine("// Switch Bit Position Name format: Switches_b7_b6_b5_b4_b3_b2_b1_b0");
+
+            string ptrName = "PtrSsmGet_";
+            string funcName = "SsmGet_";
+            
+            if (cpu.Equals("16"))
+            {
+                ptrName = "PtrSsm_";
+                funcName = "Ssm_";
+            }
+            
             foreach (var pair in switchList)
             {
                 string[] switches = new string[8];
@@ -591,8 +610,8 @@ namespace NSFW.XmlToIdc
                 }
                 
                 string name = "Switches" + bitString;
-                string pointerName = ConvertName ("PtrSsmGet_" + name);
-                string functionName = ConvertName ("SsmGet_" + name);
+                string pointerName = ConvertName (ptrName + name);
+                string functionName = ConvertName (funcName + name);
                 uint address = uint.Parse (pair.Key, System.Globalization.NumberStyles.HexNumber);
                 address = address * 4;
                 address = address + ssmBase;
@@ -709,6 +728,25 @@ namespace NSFW.XmlToIdc
                 Console.WriteLine(command);
             }
         }
+
+        private static uint ConvertBaseString(string ssmBaseString)
+        {
+
+            ssmBaseString = ssmBaseString.ToUpper();
+            uint ssmBase = uint.Parse(ssmBaseString, System.Globalization.NumberStyles.HexNumber);
+            
+            if (ssmBase < (uint)0x20000)
+            {
+                uint newBase = ssmBase + (uint)0x20000;
+                MessageBox.Show("SSM base adjusted from 0x" + ssmBase.ToString("X") + " to 0x" + newBase.ToString("X"),
+                                "Info - SSM Base Address Changed",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Information,
+                                MessageBoxDefaultButton.Button1);
+                ssmBase = newBase;
+            }
+            return ssmBase;
+        }
         
 #endregion
         
@@ -717,20 +755,21 @@ namespace NSFW.XmlToIdc
         private static void Usage()
         {
             StringBuilder builder = new StringBuilder();
-            builder.AppendLine("XmlToIdc Usage:");
-            builder.AppendLine("XmlToIdc.exe <category> ...");
+            builder.AppendLine("Usage:");
+            builder.AppendLine("XmlToIdc.exe <category> <options>...");
             builder.AppendLine();
             builder.AppendLine("Where <category> is one of the following:");
-            builder.AppendLine("    tables <cal-id>");
-            builder.AppendLine("    stdparam <target> <cal-id> <ssm-base>");
-            builder.AppendLine("    extparam <target> <cpu> <ecu-id>");
+            builder.AppendLine("    tables   <cal-id>");
+            builder.AppendLine("    stdparam <cpu> <target> <cal-id> <ssm-base>");
+            builder.AppendLine("    extparam <cpu> <target> <ecu-id>");
             builder.AppendLine("    makeall  <target> <cal-id> <ssm-base>");
             builder.AppendLine();
+            builder.AppendLine("Where <options> is the following as required by the category:");
+            builder.AppendLine("<cal-id>   is the Calibration id, e.g. A2WC522N");
+            builder.AppendLine("<cpu>      is the CPU bits identifier of the ECU, e.g. 16 or 32");
             builder.AppendLine("<target>   is the Car control module,");
             builder.AppendLine("             e.g. ecu (engine control unit) or tcu (transmission control unit)");
-            builder.AppendLine("<cpu>      is the CPU bits identifier of the ECU, e.g. 16 or 32");
-            builder.AppendLine("<ecu-id>   is the ECU identifier, e.g. 2F12785506");
-            builder.AppendLine("<cal-id>   is the Calibration id, e.g. A2WC521N");
+            builder.AppendLine("<ecu-id>   is the ECU identifier, e.g. 2F12785606");
             builder.AppendLine("<ssm-base> is the Base address of the SSM 'read' vector, e.g. 4EDDC");
             builder.AppendLine();
             builder.AppendLine("And you'll want to redirect stdout to a file, like:");
@@ -741,61 +780,62 @@ namespace NSFW.XmlToIdc
         private static void UsageTables()
         {
             StringBuilder builder = new StringBuilder();
-            builder.AppendLine("XmlToIdc tables Usage:");
+            builder.AppendLine("Usage:");
             builder.AppendLine("XmlToIdc.exe tables <cal-id>");
             builder.AppendLine();
-            builder.AppendLine("<cal-id> is the Calibration id, e.g. A2WC521N");
+            builder.AppendLine("<cal-id> is the Calibration id, e.g. A2WC522N");
             builder.AppendLine();
             builder.AppendLine("And you'll want to redirect stdout to a file, like:");
-            builder.AppendLine("XmlToIdc.exe tables A2WC521N > Tables.idc");
+            builder.AppendLine("XmlToIdc.exe tables A2WC522N > Tables.idc");
             MessageBox.Show(builder.ToString(), "XmlToIdc tables Usage Help");
         }
         
         private static void UsageStdParam()
         {
             StringBuilder builder = new StringBuilder();
-            builder.AppendLine("XmlToIdc stdparam Usage:");
-            builder.AppendLine("XmlToIdc.exe stdparam <target> <cal-id> <ssm-base>");
+            builder.AppendLine("Usage:");
+            builder.AppendLine("XmlToIdc.exe stdparam <cpu> <target> <cal-id> <ssm-base>");
             builder.AppendLine();
+            builder.AppendLine("<cpu>      is the CPU bits identifier of the ECU, e.g. 16 or 32");
             builder.AppendLine("<target>   is the Car control module,");
             builder.AppendLine("             e.g. ecu (engine control unit) or tcu (transmission control unit)");
-            builder.AppendLine("<cal-id>   is the Calibration id, e.g. A2WC521N");
+            builder.AppendLine("<cal-id>   is the Calibration id, e.g. A2WC522N");
             builder.AppendLine("<ssm-base> is the Base address of the SSM 'read' vector, e.g. 4EDDC");
             builder.AppendLine();
             builder.AppendLine("And you'll want to redirect stdout to a file, like:");
-            builder.AppendLine("XmlToIdc.exe stdparam tcu A2WC521N 4EDDC > StdParam.idc");
+            builder.AppendLine("XmlToIdc.exe stdparam 32 ecu A2WC522N 4EDDC > StdParam.idc");
             MessageBox.Show(builder.ToString(), "XmlToIdc stdparam Usage Help");
         }
         
         private static void UsageExtParam()
         {
             StringBuilder builder = new StringBuilder();
-            builder.AppendLine("XmlToIdc extparam Usage:");
-            builder.AppendLine("XmlToIdc.exe extparam <target> <cpu> <ecu-id> ");
+            builder.AppendLine("Usage:");
+            builder.AppendLine("XmlToIdc.exe extparam <cpu> <target> <ecu-id> ");
             builder.AppendLine();
-            builder.AppendLine("<target> is the Car control module,");
-            builder.AppendLine("         e.g. ecu (engine control unit) or tcu (transmission control unit)");
             builder.AppendLine("<cpu>    is the CPU bits identifier of the ECU, e.g. 16 or 32");
-            builder.AppendLine("<ecu-id> is the ECU identifier, e.g. 2F12785506");
+            builder.AppendLine("<target> is the Car control module,");
+            builder.AppendLine("           e.g. ecu (engine control unit) or tcu (transmission control unit)");
+            builder.AppendLine("<ecu-id> is the ECU identifier, e.g. 2E14486106");
             builder.AppendLine();
             builder.AppendLine("And you'll want to redirect stdout to a file, like:");
-            builder.AppendLine("XmlToIdc.exe extparam ecu 32 2F12785506> ExtParam.idc");
+            builder.AppendLine("XmlToIdc.exe extparam 16 ecu 2E14486106 > ExtParam.idc");
             MessageBox.Show(builder.ToString(), "XmlToIdc extparam Usage Help");
         }
         
         private static void UsageMakeAll()
         {
             StringBuilder builder = new StringBuilder();
-            builder.AppendLine("XmlToIdc makeall Usage:");
+            builder.AppendLine("Usage:");
             builder.AppendLine("XmlToIdc.exe makeall <target> <cal-id> <ssm-base>");
             builder.AppendLine();
             builder.AppendLine("<target>   is the Car control module,");
             builder.AppendLine("             e.g. ecu (engine control unit) or tcu (transmission control unit)");
-            builder.AppendLine("<cal-id>   is the Calibration id, e.g. A2WC521N");
+            builder.AppendLine("<cal-id>   is the Calibration id, e.g. A2WC522N");
             builder.AppendLine("<ssm-base> is the Base address of the SSM 'read' vector, e.g. 4EDDC");
             builder.AppendLine();
             builder.AppendLine("And you'll want to redirect stdout to a file, like:");
-            builder.AppendLine("XmlToIdc.exe makeall ecu A2WC521N 4EDDC > AllParams.idc");
+            builder.AppendLine("XmlToIdc.exe makeall ecu A2WC522N 4EDDC > AllParams.idc");
             MessageBox.Show(builder.ToString(), "XmlToIdc makeall Usage Help");
         }
 #endregion

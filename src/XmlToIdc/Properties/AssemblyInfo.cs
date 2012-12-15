@@ -6,11 +6,11 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("XmlToIdc")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyDescription("Convert RomRaider XML definition data to IDA naming scripts")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("NSFW")]
 [assembly: AssemblyProduct("XmlToIdc")]
-[assembly: AssemblyCopyright("Copyright © 2012  NSFW@romraider.forum and Dale C. Schultz")]
+[assembly: AssemblyCopyright("Copyright © 2012 NSFW@romraider.forum and Dale C. Schultz")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -32,5 +32,5 @@ using System.Runtime.InteropServices;
 // You can specify all the values or you can default the Build and Revision Numbers 
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("1.2.1.*")]
-[assembly: AssemblyFileVersion("1.2.1.0")]
+[assembly: AssemblyVersion("1.2.2.*")]
+[assembly: AssemblyFileVersion("1.2.2.0")]
