@@ -24,11 +24,14 @@ namespace NSFW.XmlToIdc
         
         static void Main(string[] args)
         {
-            Console.WriteLine("///////////////////////////////////////////////////////////////////////////////");
-            Console.WriteLine("// This file gernerated by XmlToIdc version: {0}",
-                              Assembly.GetExecutingAssembly().GetName().Version);
-            Console.WriteLine("// running on mscorlib.dll version: {0}",
-                              typeof(String).Assembly.GetName().Version);
+            StringBuilder builder = new StringBuilder();
+            builder.AppendLine("///////////////////////////////////////////////////////////////////////////////");
+            builder.AppendLine(string.Format("// This file gernerated by XmlToIdc version: {0}",
+                              Assembly.GetExecutingAssembly().GetName().Version));
+            builder.AppendLine(string.Format("// running on mscorlib.dll version: {0}",
+                              typeof(String).Assembly.GetName().Version));
+            Console.Write(builder.ToString());
+
             if (args.Length == 0)
             {
                 Usage();
@@ -355,35 +358,32 @@ namespace NSFW.XmlToIdc
                 string refTableAddress = "";
                 if (tableList.TryGetValue(refTableName, out refTableAddress))
                 {
-                    if (!tableName.StartsWith("Table_") && refTableAddress.Equals("2axis"))
+                    if (!tableName.StartsWith("Table_") &&
+                        (refTableAddress.Equals("1axis") || refTableAddress.Equals("2axis")))
                     {
+                        string offset = "";
+                        if (refTableAddress.Equals("1axis"))
+                        {
+                            offset = "8";
+                        }
+                        if (refTableAddress.Equals("2axis"))
+                        {
+                            offset = "12";
+                        }
                         MakeName(tableAddress, tableName);
-                        Console.WriteLine("referenceAddress = DfirstB(" + tableAddress + ");");
-                        Console.WriteLine("if (referenceAddress > 0)");
-                        Console.WriteLine("{");
-                        Console.WriteLine("    referenceAddress = referenceAddress - 12;");
+                        StringBuilder builder = new StringBuilder();
+                        builder.AppendLine("referenceAddress = DfirstB(" + tableAddress + ");");
+                        builder.AppendLine("if (referenceAddress > 0)");
+                        builder.AppendLine("{");
+                        builder.AppendLine("    referenceAddress = referenceAddress - " + offset + ";");
                         string command = string.Format("    MakeNameEx(referenceAddress, \"{0}\", SN_CHECK);", refTableName);
-                        Console.WriteLine(command);
-                        Console.WriteLine("}");
-                        Console.WriteLine("else");
-                        Console.WriteLine("{");
-                        Console.WriteLine("    Message(\"No reference to " + tableName + "\\n\");");
-                        Console.WriteLine("}");
-                    }
-                    else if (!tableName.StartsWith("Table_") && refTableAddress.Equals("1axis"))
-                    {
-                        MakeName(tableAddress, tableName);
-                        Console.WriteLine("referenceAddress = DfirstB(" + tableAddress + ");");
-                        Console.WriteLine("if (referenceAddress > 0)");
-                        Console.WriteLine("{");
-                        Console.WriteLine("    referenceAddress = referenceAddress - 8;");
-                        string command = string.Format("    MakeNameEx(referenceAddress, \"{0}\", SN_CHECK);", refTableName);
-                        Console.WriteLine(command);
-                        Console.WriteLine("}");
-                        Console.WriteLine("else");
-                        Console.WriteLine("{");
-                        Console.WriteLine("    Message(\"No reference to " + tableName + "\\n\");");
-                        Console.WriteLine("}");
+                        builder.AppendLine(command);
+                        builder.AppendLine("}");
+                        builder.AppendLine("else");
+                        builder.AppendLine("{");
+                        builder.AppendLine("    Message(\"No reference to " + tableName + "\\n\");");
+                        builder.AppendLine("}");
+                        Console.WriteLine(builder.ToString());
                     }
                     else
                     {
@@ -439,6 +439,10 @@ namespace NSFW.XmlToIdc
                     }
                     string name = navigator.GetAttribute("name", "");
                     id = navigator.GetAttribute("id", "");
+                    if (cpu.Equals("16") && id.Equals("P89"))
+                    {
+                        continue;
+                    }
                     name = name + "_" + id.Trim();
                     string pointerName = ConvertName(ptrName + name);
                     string functionName = ConvertName(funcName + name);
@@ -461,6 +465,23 @@ namespace NSFW.XmlToIdc
                     string getAddress = string.Format("addr = Dword({0});", addressString);
                     Console.WriteLine(getAddress);
                     MakeName("addr", functionName);
+
+                    if (cpu.Equals("16"))
+                    {
+                        string fGetter = ConvertName("SsmGet_" + name);
+                        StringBuilder builder = new StringBuilder();
+                        builder.AppendLine("addr = GetFunctionAttr(FindImmediate(0, 1, (addr - 0x20000)), FUNCATTR_START);");
+                        builder.AppendLine("if (addr != BADADDR)");
+                        builder.AppendLine("{");
+                        string command = string.Format("    MakeNameEx(addr, \"{0}\", SN_CHECK);", fGetter);
+                        builder.AppendLine(command);
+                        builder.AppendLine("}");
+                        builder.AppendLine("else");
+                        builder.AppendLine("{");
+                        builder.AppendLine("    Message(\"No reference to " + name + "\\n\");");
+                        builder.AppendLine("}");
+                        Console.Write(builder.ToString());
+                    }
                     Console.WriteLine();
                 }
                 // now let's print the switch references
@@ -548,36 +569,41 @@ namespace NSFW.XmlToIdc
         
         private static void WriteHeader1(string functionName, string description)
         {
-            Console.WriteLine("///////////////////////////////////////////////////////////////////////////////");
-            Console.WriteLine("// " + description);
-            Console.WriteLine("///////////////////////////////////////////////////////////////////////////////");
-            Console.WriteLine("#include <idc.idc>");
-            Console.WriteLine("static main ()");
-            Console.WriteLine("{");
-            Console.WriteLine("    " + functionName + " ();");
-            Console.WriteLine("}");
-            Console.WriteLine();
+            StringBuilder builder = new StringBuilder();
+            builder.AppendLine("///////////////////////////////////////////////////////////////////////////////");
+            builder.AppendLine("// " + description);
+            builder.AppendLine("///////////////////////////////////////////////////////////////////////////////");
+            builder.AppendLine("#include <idc.idc>");
+            builder.AppendLine("static main ()");
+            builder.AppendLine("{");
+            builder.AppendLine("    " + functionName + " ();");
+            builder.AppendLine("}");
+            Console.WriteLine(builder.ToString());
         }
         
         private static void WriteHeader2(string functionName)
         {
-            Console.WriteLine("static " + functionName + " ()");
-            Console.WriteLine("{");
+            StringBuilder builder = new StringBuilder();
+            builder.AppendLine("static " + functionName + " ()");
+            builder.AppendLine("{");
+            builder.AppendLine("Message(\"--- Now marking " + functionName + " ---\\n\");");
+            Console.Write(builder.ToString());
         }
         
         private static void WriteHeader3(string functionName1, string functionName2, string functionName3, string description)
         {
-            Console.WriteLine("///////////////////////////////////////////////////////////////////////////////");
-            Console.WriteLine("// " + description);
-            Console.WriteLine("///////////////////////////////////////////////////////////////////////////////");
-            Console.WriteLine("#include <idc.idc>");
-            Console.WriteLine("static main ()");
-            Console.WriteLine("{");
-            Console.WriteLine("    " + functionName1 + " ();");
-            Console.WriteLine("    " + functionName2 + " ();");
-            Console.WriteLine("    " + functionName3 + " ();");
-            Console.WriteLine("}");
-            Console.WriteLine();
+            StringBuilder builder = new StringBuilder();
+            builder.AppendLine("///////////////////////////////////////////////////////////////////////////////");
+            builder.AppendLine("// " + description);
+            builder.AppendLine("///////////////////////////////////////////////////////////////////////////////");
+            builder.AppendLine("#include <idc.idc>");
+            builder.AppendLine("static main ()");
+            builder.AppendLine("{");
+            builder.AppendLine("    " + functionName1 + " ();");
+            builder.AppendLine("    " + functionName2 + " ();");
+            builder.AppendLine("    " + functionName3 + " ();");
+            builder.AppendLine("}");
+            Console.WriteLine(builder.ToString());
         }
         
         private static void WriteFooter(string functionName)
@@ -765,12 +791,12 @@ namespace NSFW.XmlToIdc
             builder.AppendLine("    makeall  <target> <cal-id> <ssm-base>");
             builder.AppendLine();
             builder.AppendLine("Where <options> is the following as required by the category:");
-            builder.AppendLine("<cal-id>   is the Calibration id, e.g. A2WC522N");
-            builder.AppendLine("<cpu>      is the CPU bits identifier of the ECU, e.g. 16 or 32");
-            builder.AppendLine("<target>   is the Car control module,");
-            builder.AppendLine("             e.g. ecu (engine control unit) or tcu (transmission control unit)");
-            builder.AppendLine("<ecu-id>   is the ECU identifier, e.g. 2F12785606");
-            builder.AppendLine("<ssm-base> is the Base address of the SSM 'read' vector, e.g. 4EDDC");
+            builder.AppendLine("    <cal-id>   is the Calibration id, e.g. A2WC522N");
+            builder.AppendLine("    <cpu>      is the CPU bits identifier of the ECU, e.g. 16 or 32");
+            builder.AppendLine("    <target>   is the Car control module,");
+            builder.AppendLine("                 e.g. ecu (engine control unit) or tcu (transmission control unit)");
+            builder.AppendLine("    <ecu-id>   is the ECU identifier, e.g. 2F12785606");
+            builder.AppendLine("    <ssm-base> is the Base address of the SSM 'read' vector, e.g. 4EDDC");
             builder.AppendLine();
             builder.AppendLine("And you'll want to redirect stdout to a file, like:");
             builder.AppendLine("XmlToIdc.exe ... > Whatever.idc");
