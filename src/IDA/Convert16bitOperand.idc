@@ -5,8 +5,8 @@
 * You are free to use this script for any purpose, but please keep
 * notice of where it came from!
 *
-* Version: 2
-* Date   : 2012-12-15
+* Version: 3
+* Date   : 2012-12-16
 *
 * This script attempts to convert immediate and indirect references to
 * offsets if the value is greater than 0x00FF.
@@ -20,6 +20,8 @@
 *    2) place the screen cursor at the beginning of a function to convert the entire function start to end
 *    3) select a screen range and convert the selected range
 *    4) place the screen cursor at 0x0000 to convert the entire segment, NOT ADVISED
+*       NOTE: if you need to remove an offset from an instruction, press Alt-F1 and delete the operand info
+*             in the Operand text field and press OK.
 *
 * If you wish to make this script available via an IDA hotkey you will need to modify your ida.idc script.
 * Add the line:   #include <path_to\Convert16bitOperand.idc>
