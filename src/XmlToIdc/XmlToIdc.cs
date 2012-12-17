@@ -404,7 +404,7 @@ namespace NSFW.XmlToIdc
         private static void WriteStandardParameters(string target, string ecuid, uint ssmBase, string cpu)
         {
             Console.WriteLine("auto addr;");
-            Console.WriteLine("");
+
             if (target == "ecu" | target == "ECU")
             {
                 target = "2";
@@ -421,6 +421,9 @@ namespace NSFW.XmlToIdc
             {
                 ptrName = "PtrSsm_";
                 funcName = "Ssm_";
+                Console.WriteLine("auto opAddr, seg;");
+                Console.WriteLine("if (SegByName(\"DATA\") != BADADDR) seg = 1;");
+                Console.WriteLine("");
             }
 
             using (Stream stream = File.OpenRead("logger.xml"))
@@ -451,29 +454,45 @@ namespace NSFW.XmlToIdc
                     {
                         continue;
                     }
-                    
+
                     string addressString = iter.Current.InnerXml;
                     addressString = addressString.Substring(2);
                     
                     uint address = uint.Parse(addressString, System.Globalization.NumberStyles.HexNumber);
+                    if (cpu.Equals("16") && address > 0x18F)    // addresses over this will overrun DTC structure
+                    {
+                        continue;
+                    }
                     address = address * 4;
                     address = address + ssmBase;
                     addressString = "0x" + address.ToString("X8");
                     
+                    Console.WriteLine(string.Format("MakeUnknown({0}, 4, DOUNK_SIMPLE);", addressString));
+                    Console.WriteLine(string.Format("MakeDword({0});", addressString));
                     MakeName(addressString, pointerName);
-                    
+
                     string getAddress = string.Format("addr = Dword({0});", addressString);
                     Console.WriteLine(getAddress);
                     MakeName("addr", functionName);
 
                     if (cpu.Equals("16"))
                     {
+                        string length = "1";
+                        length = navigator.GetAttribute("length", "");
+                        FormatData("addr", length);
                         string fGetter = ConvertName("SsmGet_" + name);
                         StringBuilder builder = new StringBuilder();
-                        builder.AppendLine("addr = GetFunctionAttr(FindImmediate(0, 1, (addr - 0x20000)), FUNCATTR_START);");
+                        builder.AppendLine("opAddr = FindImmediate(0, 0x21, (addr - 0x20000));");
+                        builder.AppendLine("addr = GetFunctionAttr(opAddr, FUNCATTR_START);");
                         builder.AppendLine("if (addr != BADADDR)");
                         builder.AppendLine("{");
-                        string command = string.Format("    MakeNameEx(addr, \"{0}\", SN_CHECK);", fGetter);
+                        builder.AppendLine("    if (seg)");
+                        builder.AppendLine("    {");
+                        builder.AppendLine("        OpAlt(opAddr, 0, \"\");");
+                        builder.AppendLine("        OpOff(MK_FP(\"ROM\", opAddr), 0, 0x20000);");
+                        builder.AppendLine("    }");
+                        builder.AppendLine("    add_dref(opAddr, Dword(" + addressString + "), dr_I);");
+                        string command  =  string.Format("    MakeNameEx(addr, \"{0}\", SN_CHECK);", fGetter);
                         builder.AppendLine(command);
                         builder.AppendLine("}");
                         builder.AppendLine("else");
@@ -639,14 +658,24 @@ namespace NSFW.XmlToIdc
                 string pointerName = ConvertName (ptrName + name);
                 string functionName = ConvertName (funcName + name);
                 uint address = uint.Parse (pair.Key, System.Globalization.NumberStyles.HexNumber);
+                if (cpu.Equals("16") && address > 0x18F)    // addresses over this will overrun DTC structure
+                {
+                    continue;
+                }
                 address = address * 4;
                 address = address + ssmBase;
                 string addressString = "0x" + address.ToString ("X8");
                 
+                Console.WriteLine(string.Format("MakeUnknown({0}, 4, DOUNK_SIMPLE);", addressString));
+                Console.WriteLine(string.Format("MakeDword({0});", addressString));
                 MakeName (addressString, pointerName);
                 
                 string getAddress = string.Format("addr = Dword({0});", addressString);
                 Console.WriteLine(getAddress);
+                if (cpu.Equals("16"))
+                {
+                    FormatData("addr", "1");
+                }
                 MakeName("addr", functionName);
                 Console.WriteLine();
             }
@@ -730,7 +759,7 @@ namespace NSFW.XmlToIdc
         private static void FormatData(string address, string length)
         {
             string datatype = "";
-            if (length == "")
+            if (length == "" || length == "1")
             {
                 datatype = "MakeByte";
                 length = "1";
