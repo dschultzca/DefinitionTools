@@ -41,6 +41,10 @@ static main() {
 		Message(form("%s processor not supported by Convert16bitOperand() function\n", proc));
 		return;
 	}
+	if (SegByName("DATA") == BADADDR) {
+		Warning("This ROM is not segmented properly for use by the Convert16bitOperand() function");
+		return;
+	}
 	currAddr = here;
 	if (currAddr == 0x0) {
 		currAddr = Word(0x2);
