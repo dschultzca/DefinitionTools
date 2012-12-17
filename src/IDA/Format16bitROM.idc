@@ -5,8 +5,8 @@
 * You are free to use this script for any purpose, but please keep
 * notice of where it came from!
 *
-* Version: 2
-* Date   : 2012-11-29
+* Version: 3
+* Date   : 2012-12-16
 *
 * This script is used to initialize a 16bit ROM.
 * To use the script open a 16bit ROM in IDA, either 160kB or 192kB is supported.
@@ -21,7 +21,7 @@
 
 static main() {
 	auto vcArray, vnArray, vxArray, calId, ZK, SK, PK, SP, PC, addr0, loadSize, rc, result, currAddr, ync;
-	ync = AskYN(-1, "WARNING: USING THIS SCRIPT ON AN EXISTING ROM DEFINITION WILL CAUSE LOSS OF ALL YOUR NAMING AND COMMENTING\ncontinue?"); // -1:cancel,0-no,1-ok
+	ync = AskYN(-1, "WARNING: USING THIS SCRIPT ON AN EXISTING ROM DEFINITION WILL CAUSE LOSS OF ALL YOUR NAMING AND COMMENTING.\nProduce a Database Dump IDC file if you wish to save your work for re-import.\nContinue with ROM formatting?"); // -1:cancel,0-no,1-ok
 	if (ync != 1) {
 		Message("Aborting ROM formating at user request\n");
 		return 0;
