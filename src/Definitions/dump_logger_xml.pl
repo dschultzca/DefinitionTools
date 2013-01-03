@@ -61,7 +61,7 @@ if ($measure eq "metric") {
 # create a handle and connect to the statistics database
 $dbh = DBI->connect (
 	'DBI:mysql:database=definitions;host=localhost',
-	'root','ieee802',{AutoCommit=>1, RaiseError=>0, PrintError=>0})
+	'xxxx','xxxx',{AutoCommit=>1, RaiseError=>0, PrintError=>0})
 	or die "$0: Couldn't connect to database";
 
 # Get last version/update info to insert into def header

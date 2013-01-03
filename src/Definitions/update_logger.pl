@@ -1,6 +1,6 @@
 #!/usr/bin/perl 
 #
-# Copyright (C) 2012  Dale C. Schultz
+# Copyright (C) 2013  Dale C. Schultz
 # RomRaider member ID: dschultz
 #
 # You are free to use this source for any purpose, but please keep
@@ -9,12 +9,13 @@
 #
 # Purpose
 #   Reads from IDC dump file to update MySQL Logger definitions tables.
-#	Version:	6
-#	Update:		Nov. 12/2012	
+#	Version:	7
+#	Update:		Jan. 03/2013	
 #------------------------------------------------------------------------------------------
 
 use File::Basename;
-unless ($ARGV[0]) {
+unless ($ARGV[0])
+{
 	print "Input file missing...\n";
 	print "Usage: logger_update.pl <IDC dump text file>\n";
 	exit 1;
@@ -32,7 +33,7 @@ use DBI;
 # create a handle and connect to the statistics database
 $dbh = DBI->connect (
 	'DBI:mysql:database=definitions;host=localhost',
-	'root','ieee802',{AutoCommit=>1, RaiseError=>0, PrintError=>0})
+	'xxxx','xxxx',{AutoCommit=>1, RaiseError=>0, PrintError=>0})
 	or die "$0: Couldn't connect to database";
 
 # build arrays from the database tables, lookups in memory are faster
@@ -51,32 +52,39 @@ $add_entry = 0;
 
 print "Current Database Version: $db_id ($db_version)\n";
 #check if we have the ECU ID already
-if (!$ecuid_id{$param_file}) {
+if (!$ecuid_id{$param_file})
+{
 	print "ECU ID $param_file is not defined.\n";
-	if ($commit) {
+	if ($commit)
+	{
 		new_ecuid_entry($param_file);
 		$update = "Added ECU ID: $param_file to extended parameters\n";
 		print "+COMMIT: ECU ID $param_file ($ecuid_id{$param_file}) added.\n";
 	}
-	else {
+	else
+	{
 		print "+TEST: ECU ID $param_file will be added.\n";
 	}
 		$add_ecuid++;
 }
-else {
+else
+{
 	print "ECU ID $param_file ($ecuid_id{$param_file}) exists.\n";
 	$update = "Updated ECU ID: $param_file extended parameters \n";
 }
 $count = 0;
 $count1 = 0;
-foreach $line (<INPUT>) {
+foreach $line (<INPUT>)
+{
 	$count++;
-	if ($line =~ /^\#/) {
+	if ($line =~ /^\#/)
+	{
 		$count--;
 		next;
 	}
-	@values = split(/\s+/, $line);		# line format expected: Extended Paramter ID <space> RAM Address <space> Data Length
-	if ($#values != 2) {				# line should only contain three values
+	@values = split(/\s+/, $line);		# line format expected: Extended Paramter ID <space> RAM Address
+	if ($#values != 1)					# line should only contain two values
+	{
 		print "WARNING: Line $count invalid number of parameters, line skipped.\n";
 		$warn++;
 		next;
@@ -84,93 +92,108 @@ foreach $line (<INPUT>) {
 	@extname = split(/_/, $values[0]);	# split first argument to extract the ID from the last element
 	$extid = $extname[$#extname];		# get last element
 	$extid =~ s/^E//;					# clean last element up so we have digits only
-	if (length($values[1]) > 6) {
-		$values[1] =~ s/^..//;			# remove first two bytes to make the address six bytes long
+	if (length($values[1]) > 6)
+	{
+		$values[1] =~ s/.*(\w{6,6}$)/\1/;	# make the address six bytes long
 	}
-	if (($values[2] != 1) &&
-		($values[2] != 2) &&
-		($values[2] != 4) ) {
-		print "WARNING: Invalid data length ($values[2]) at line $count\n";
-		$warn++;
-		next;
-	}
-	
+	$addr = $values[1];
 	# check if we have the Extended Parameter id already
-	if (!$ecuparam_id{$extid}) {
+	if (!$ecuparam_id{$extid})
+	{
 		print "WARNING: Extended parameter $extid is not a known ID.\n";
 		$warn++;
 		next;
 	}
+	
+	# default length of data expected for this Extended Parameter id
+	$deft_len = $ecuparam_len{$ecuparam_id{$extid}};
+
 	# check if we have the RAM address/length id already
-	if (!$address_id{$values[1]}{$values[2]}) {
-		print "Address $values[1]/$values[2] is not defined.\n";
-		if ($commit) {
-			new_addr_entry($values[1], $values[2]);
-			print "+COMMIT: Address $values[1]/$values[2] ($address_id{$values[1]}{$values[2]}) added.\n";
+	if (!$address_id{$addr}{$deft_len})
+	{
+		print "Address $addr/$deft_len is not defined.\n";
+		if ($commit)
+		{
+			new_addr_entry($addr, $deft_len);
+			print "+COMMIT: Address $addr/$deft_len ($address_id{$addr}{$deft_len}) added.\n";
 		}
-		else {
-			print "+TEST: Address $values[1]/$values[2] will be added.\n";
+		else
+		{
+			print "+TEST: Address $addr/$deft_len will be added.\n";
 		}
 		$add_addr++;
 	}
-	else {
-		# print "Address $values[1]/$values[2] ($address_id{$values[1]}{$values[2]}) exists.\n";
+	else
+	{
+		# print "Address $addr/$deft_len ($address_id{$addr}{$deft_len}) exists.\n";
 	}
 	# check to see if the parameter entry exists and if the address and data length match or not
 	# if they do not match then UPDATE rather than INSERT the entry
 	if (defined($unique_id_check{$param_file.$extid}) &&
-		($unique_id_check{$param_file.$extid} != $address_id{$values[1]}{$values[2]})) {
+		($unique_id_check{$param_file.$extid} != $address_id{$addr}{$deft_len}))
+	{
 		$current_addr = $db_address{$unique_id_check{$param_file.$extid}};		# hex addr value
 		$current_len = $db_address_len{$unique_id_check{$param_file.$extid}};	# data length
 		$current_addr_id = $address_id{$current_addr}{$current_len};			# address serial number
-		$new_addr = $values[1];
-		$new_len = $values[2];
+		$new_addr = $addr;
+		$new_len = $deft_len;
 		$new_addr_id = $address_id{$new_addr}{$new_len};
-		if ($commit) {
+		if ($commit)
+		{
 			update_unique_entry($unique_id_check_sn{$param_file.$extid}, $new_addr_id);
 			print "*  COMMIT: Address entry $current_addr/$current_len ($current_addr_id) ";
 			print "for $param_file/E${extid} - changed to $new_addr/$new_len ($new_addr_id).\n";
 			$update = $update."Changed address/length entry for ECU ID $param_file for extended parameter E${extid}\n";
 		}
-		else {
+		else
+		{
 			print "*  INFO: Address entry $current_addr/$current_len ($current_addr_id) ";
 			print "for $param_file/E${extid} - will change to $new_addr/$new_len ($new_addr_id).\n";
 		}
 		$change_addr++;
 	}
-	else {
+	else
+	{
 		# finally check to see if the ECU ID is already defined in the database for this Extended Parameter
-		if (!$unique_id{$param_file.$extid.$values[1].$values[2]}) {
+		if (!$unique_id{$param_file.$extid.$addr.$deft_len})
+		{
 			print "  E${extid} - Parameter combination is not defined.\n";
-			if ($commit) {
-				new_unique_entry($extid, $param_file, $values[1], $values[2]);
-				print "+  COMMIT: E${extid} - unique entry ($unique_id{$param_file.$extid.$values[1].$values[2]}) added.\n";
+			if ($commit)
+			{
+				new_unique_entry($extid, $param_file, $addr, $deft_len);
+				print "+  COMMIT: E${extid} - unique entry ($unique_id{$param_file.$extid.$addr.$deft_len}) added.\n";
 			}
-			else {
+			else
+			{
 				print "+  TEST: E${extid} - will be added.\n";
 			}
 			$add_entry++;
 		}
-		else {
-			print "   ECU ID $param_file ($ecuid_id{$param_file}) exists for extended parameter E${extid} ($unique_id{$param_file.$extid.$values[1].$values[2]}).\n";
+		else
+		{
+			print "   ECU ID $param_file ($ecuid_id{$param_file}) exists for extended parameter E${extid} ($unique_id{$param_file.$extid.$addr.$deft_len}).\n";
 		}
 	}
 	$count1++;
 }
 print "\n$count1 of $count lines evaluated.\n";
-if ($warn) {
+if ($warn)
+{
 	print "$warn WARNING(S)\n";
 }
-if ($commit) {
+if ($commit)
+{
 	&update_version;
 	&get_db_version;
 	print "COMMIT: New Database version is $db_id ($db_version)\n";
 	print "Changes:\n$update\n";
 }
-elsif ($warn) {
+elsif ($warn)
+{
 	print "!--> Correct input file and test again <--!\n";
 }
-else {
+else
+{
 	print "TEST complete, run with commit to add entries to database.\n";
 }
 print "Summary:\n";
@@ -202,17 +225,17 @@ sub get_db_version {
 
 sub get_ecuparam_id {
 	# create an array for all of the extended parameters
-	my $serial, $id, $name;
-	my $sql = qq(SELECT serial, id, name FROM ecuparam);
+	my $serial, $id, $length;
+	my $sql = qq(SELECT serial, id, length FROM ecuparam);
 	my $sth = $dbh->prepare($sql);
 	$sth->execute;
-	$sth->bind_columns(\$serial, \$id, \$name);
+	$sth->bind_columns(\$serial, \$id, \$length);
 	while ($sth->fetch) {
 		$ecuparam_id{$id}=$serial;
-		$ecuparamd_id{$serial}=$name;
+		$ecuparam_len{$serial}=$length;
 	}
-	# for $key (keys %ecuparam_id) {
-		# print "Key: $key Value: $ecuparam_id{$key}\n";
+	# for $key (keys %ecuparam_len) {
+		# print "Key: $key Value: $ecuparam_len{$key}\n";
 	# }
 	$sth->finish;
 }
