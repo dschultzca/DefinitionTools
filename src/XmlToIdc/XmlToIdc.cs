@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 NSFW@romraider.forum and Dale C. Schultz
+ * Copyright (C) 2013 NSFW@romraider.forum and Dale C. Schultz
  * RomRaider member ID: NSFW and dschultz
  *
  * You are free to use this script for any purpose, but please keep
@@ -30,6 +30,7 @@ namespace NSFW.XmlToIdc
                               Assembly.GetExecutingAssembly().GetName().Version));
             builder.AppendLine(string.Format("// running on mscorlib.dll version: {0}",
                               typeof(String).Assembly.GetName().Version));
+            builder.AppendLine("///////////////////////////////////////////////////////////////////////////////");
             Console.Write(builder.ToString());
 
             if (args.Length == 0)
@@ -263,7 +264,11 @@ namespace NSFW.XmlToIdc
                         {
                             string name = nav.GetAttribute("name", "");
                             string storageAddress = nav.GetAttribute("storageaddress", "");
-                            
+                            if(!storageAddress.StartsWith("0x"))
+                            {
+                                storageAddress = "0x" + storageAddress;
+                            }
+
                             name = ConvertName(name);
                             UpdateTableList(name, storageAddress);
                             if (ecu16bit)
@@ -283,7 +288,11 @@ namespace NSFW.XmlToIdc
                                     string axis = nav.GetAttribute("type", "");
                                     axes.Add(axis);
                                     string axisAddress = nav.GetAttribute("storageaddress", "");
-                                    
+                                    if(!axisAddress.StartsWith("0x"))
+                                    {
+                                        axisAddress = "0x" + axisAddress;
+                                    }
+
                                     axis = ConvertName(name + "_" + axis);
                                     UpdateTableList(axis, axisAddress);
                                 } while (nav.MoveToNext());
@@ -829,7 +838,7 @@ namespace NSFW.XmlToIdc
             builder.AppendLine();
             builder.AppendLine("And you'll want to redirect stdout to a file, like:");
             builder.AppendLine("XmlToIdc.exe ... > Whatever.idc");
-            MessageBox.Show(builder.ToString(), "XmlToIdc Usage Help");
+            Console.Write(builder.ToString());
         }
         
         private static void UsageTables()
@@ -842,7 +851,7 @@ namespace NSFW.XmlToIdc
             builder.AppendLine();
             builder.AppendLine("And you'll want to redirect stdout to a file, like:");
             builder.AppendLine("XmlToIdc.exe tables A2WC522N > Tables.idc");
-            MessageBox.Show(builder.ToString(), "XmlToIdc tables Usage Help");
+            Console.Write(builder.ToString());
         }
         
         private static void UsageStdParam()
@@ -859,7 +868,7 @@ namespace NSFW.XmlToIdc
             builder.AppendLine();
             builder.AppendLine("And you'll want to redirect stdout to a file, like:");
             builder.AppendLine("XmlToIdc.exe stdparam 32 ecu A2WC522N 4EDDC > StdParam.idc");
-            MessageBox.Show(builder.ToString(), "XmlToIdc stdparam Usage Help");
+            Console.Write(builder.ToString());
         }
         
         private static void UsageExtParam()
@@ -875,7 +884,7 @@ namespace NSFW.XmlToIdc
             builder.AppendLine();
             builder.AppendLine("And you'll want to redirect stdout to a file, like:");
             builder.AppendLine("XmlToIdc.exe extparam 16 ecu 2E14486106 > ExtParam.idc");
-            MessageBox.Show(builder.ToString(), "XmlToIdc extparam Usage Help");
+            Console.Write(builder.ToString());
         }
         
         private static void UsageMakeAll()
@@ -891,7 +900,7 @@ namespace NSFW.XmlToIdc
             builder.AppendLine();
             builder.AppendLine("And you'll want to redirect stdout to a file, like:");
             builder.AppendLine("XmlToIdc.exe makeall ecu A2WC522N 4EDDC > AllParams.idc");
-            MessageBox.Show(builder.ToString(), "XmlToIdc makeall Usage Help");
+            Console.Write(builder.ToString());
         }
 #endregion
     }
