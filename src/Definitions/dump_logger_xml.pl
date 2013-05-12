@@ -1,6 +1,6 @@
 #!/usr/bin/perl 
 
-# Copyright (C) 2012  Dale C. Schultz
+# Copyright (C) 2013 Dale C. Schultz
 # RomRaider member ID: dschultz
 #
 # You are free to use this source for any purpose, but please keep
@@ -9,8 +9,8 @@
 #
 # Purpose
 #	Reads the database and dumps logger XML file to STDOUT
-#	Version:    6
-#	Update:     Sep. 4/2012
+#	Version:    7
+#	Update:     May. 11/2013
 #------------------------------------------------------------------------------------------
 
 # dump format
@@ -137,7 +137,9 @@ foreach $id (sort {$a<=>$b} keys %parameter_id) {
 			$length = " length=\"$parameter_id{$id}{'length'}\"";
 		}
 	if ($parameter_id{$id}{'address'}) {
-		print "\n                    <address${length}>0x$parameter_id{$id}{'address'}</address>\n";
+		my $addr = $parameter_id{$id}{'address'};
+		$addr =~ s/:/:0x/;
+		print "\n                    <address${length}>0x$addr</address>\n";
 	}
 	if ($parameter_id{$id}{'depends'}) {
 		print "\n                    <depends>\n";
