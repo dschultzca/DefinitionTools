@@ -9,8 +9,8 @@
 #
 # Purpose
 #	Reads the database and dumps logger XML file to STDOUT
-#	Version:    7
-#	Update:     May. 11/2013
+#	Version:    8
+#	Update:     May. 15/2013
 #------------------------------------------------------------------------------------------
 
 # dump format
@@ -138,8 +138,16 @@ foreach $id (sort {$a<=>$b} keys %parameter_id) {
 		}
 	if ($parameter_id{$id}{'address'}) {
 		my $addr = $parameter_id{$id}{'address'};
-		$addr =~ s/:/:0x/;
-		print "\n                    <address${length}>0x$addr</address>\n";
+		if ($addr =~ /:/) {
+			my @addresses = split(/:/, $addr);
+			foreach $addrPart (@addresses) {
+				print "\n                    <address>0x$addrPart</address>";
+			}
+			print "\n";
+		}
+		else {
+			print "\n                    <address${length}>0x$addr</address>\n";
+		}
 	}
 	if ($parameter_id{$id}{'depends'}) {
 		print "\n                    <depends>\n";
