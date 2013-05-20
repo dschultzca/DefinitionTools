@@ -1,11 +1,9 @@
 /*
- * Copyright (C) 2010+  Dale C. Schultz
+ * Copyright (C) 2013  Dale C. Schultz
  * RomRaider member ID: dschultz
  *
  * You are free to use this script for any purpose, but please keep
  * notice of where it came from!
- *
- * Version: 3
  *
  * To use this script you must locate the start of the CEL routine
  * definitions in the ROM.
@@ -25,12 +23,26 @@
 #include <idc.idc>
 static main() {
 	auto i, startFrom, addrFrom, CelSwTable, pcodeEnabled, pcount, pcArray, currentCode, proceed, endCheck, fout, resultArray, pOOOO, strPcode, alpha, pDesc;
+	auto byteOffset, codeBit, ync, offset;
 	pcArray = GetArrayId("PCODEARRAY");
 	DeleteArray(pcArray);
 	resultArray = GetArrayId("RESULTARRAY");
 	DeleteArray(resultArray);
 	CreatePcodeArray();
 	pcArray = GetArrayId("PCODEARRAY");
+
+	ync = AskYN(-1, "This question helps determine the CEL table format.\n\nIs this a CAN ROM (2008+)?"); // -1:cancel,0-no,1-ok
+	if (ync == -1) {
+		Message("Aborting ROM formating at user request\n");
+		return 0;
+	}
+	else if (ync == 1) {
+		offset = 2;
+	}
+	else {
+		offset = 1;
+	}
+
 	CelSwTable = AskAddr(0,"Make sure the cursor is on the CEL Routine Table Start address then,\nEnter the CEL Switch Table Starting Address:\n");
 	if (CelSwTable < 1) {
 		Message("Script cancelled by user.\n");
@@ -49,10 +61,11 @@ static main() {
 			MakeRptCmt(addrFrom+i, "");
 		}
 		MakeByte(addrFrom);
-		MakeByte(addrFrom+1);
-		MakeByte(addrFrom+2);
-		MakeByte(addrFrom+3);
-		MakeWord(addrFrom+4);	// P code in this word
+		MakeByte(addrFrom+1);	// pre-CAN offset into DTC storage table
+		MakeByte(addrFrom+2);	// pre-CAN DTC bit mask (sets bit for active)
+								// CAN offset into DTC storage table
+		MakeByte(addrFrom+3);	// CAN DTC bit mask (sets bit for active)
+		MakeWord(addrFrom+4);	// Diagnostic Trouble Code in this word
 		MakeByte(addrFrom+6);
 		MakeByte(addrFrom+7);
 		MakeByte(addrFrom+8);
@@ -66,6 +79,32 @@ static main() {
 		MakeByte(addrFrom+19);
 		MakeUnknown(CelSwTable+pcount, 1, DOUNK_SIMPLE);
 		MakeByte(CelSwTable+pcount);
+		byteOffset = Byte(addrFrom + offset);
+		codeBit = Byte(addrFrom +1 + offset);
+		if (codeBit == 0x01) {
+			codeBit = 0;
+		}
+		else if (codeBit == 0x02) {
+			codeBit = 1;
+		}
+		else if (codeBit == 0x04) {
+			codeBit = 2;
+		}
+		else if (codeBit == 0x08) {
+			codeBit = 3;
+		}
+		else if (codeBit == 0x010) {
+			codeBit = 4;
+		}
+		else if (codeBit == 0x020) {
+			codeBit = 5;
+		}
+		else if (codeBit == 0x040) {
+			codeBit = 6;
+		}
+		else if (codeBit == 0x080) {
+			codeBit = 7;
+		}
 		currentCode = Word(addrFrom+4);
 
 		// Check for P codes with Alphabetical characters in them
@@ -73,13 +112,11 @@ static main() {
 		if (substr(strPcode,0,1)  > "9") {alpha = 1;}
 		if (substr(strPcode,0,1) == "C") {alpha = 2;}
 		if (currentCode == 0xFFFF)		{ endCheck = 0; Message("Found P code of FFFF\n"); }
-//		if (currentCode == 0x00FF)		{ endCheck = 0; Message("Found P code of 00FF\n"); }
-//		if (currentCode >= 0xA000)		{ endCheck = 0; Message("Found P code with non-numeric value\n"); }
 
 		pcodeEnabled = CheckEnabled(CelSwTable, currentCode, pcount);
 		strPcode = StringOfPcode(currentCode);
 		MakeRptCmt(addrFrom+4, form("%s - %s %s", pcodeEnabled, strPcode, GetArrayElement(AR_STR, pcArray, currentCode)));
-		Message(form("%s, 0x%s, %s %s\n", pcodeEnabled, ltoa(CelSwTable+pcount, 16), strPcode, GetArrayElement(AR_STR, pcArray, currentCode)));
+		Message(form("%s, 0x%s, byte:%02X, bit:%d, %s %s\n", pcodeEnabled, ltoa(CelSwTable+pcount, 16), byteOffset, codeBit, strPcode, GetArrayElement(AR_STR, pcArray, currentCode)));
 		if (endCheck != 0 && alpha != 1) {
 			if (pcodeEnabled == "E") {
 				pDesc = GetArrayElement(AR_STR, pcArray, currentCode);
