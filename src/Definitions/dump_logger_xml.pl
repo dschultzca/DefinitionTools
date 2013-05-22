@@ -9,8 +9,8 @@
 #
 # Purpose
 #	Reads the database and dumps logger XML file to STDOUT
-#	Version:    8
-#	Update:     May. 15/2013
+#	Version:    9
+#	Update:     May. 21/2013
 #------------------------------------------------------------------------------------------
 
 # dump format
@@ -40,12 +40,14 @@ use DBI;
 use Getopt::Std;
 
 # Set up the command line to accept the language to dump.
-my $ret = getopts ("l:u:");
+my $ret = getopts ("gl:u:");
+my $groupEcuId = $opt_g;
 my $locale = $opt_l;
 my $measure = $opt_u;
 if (($locale ne "en" && $locale ne "de") || 
     ($measure ne "std" && $measure ne "imp" && $measure ne "metric")) {
-	die "Usage: $0 -l locale -u units> <output_file.xml>\nWhere locale is: 'en' or 'de'\n   and units is: 'std', 'imp' or 'metric'";
+	print "\nUsage: $0 -g -l locale -u units > <output_file.xml>\nThe optional -g flag groups the ECU IDs by common address.\nWhere locale is: 'en' or 'de'\n   and units is: 'std', 'imp' or 'metric'\n";
+	exit 1;
 }
 my $unitname;
 if ($measure eq "std") {
@@ -132,7 +134,7 @@ foreach $id (sort {$a<=>$b} keys %parameter_id) {
 	}
 	printf('                <parameter id="P%d" name="%s" desc="%s"%s target="%d">',
 		$id, $parameter_id{$id}{'name'}, $parameter_id{$id}{'desc'}, $bytebit, $parameter_id{$id}{'target'});
-		my $length = ''; 
+		my $length = '';
 		if ($parameter_id{$id}{'length'} > 1) {
 			$length = " length=\"$parameter_id{$id}{'length'}\"";
 		}
@@ -195,20 +197,11 @@ while ($sth->fetch) {
 	next if ($reserved);
 	$switch_id{$id}=$serial;
 	$switch_id{$id}{'name'}=$name;
-	if($target == 1) {
-		$tn = "(E)";
-	}
-	elsif($target == 2) {
-		$tn = "(T)";
-	}
-	elsif($target == 3) {
-		$tn = "(B)";
-	}
 	if ($desc) {
-		$switch_id{$id}{'desc'}="${tn} S${id}-$desc";
+		$switch_id{$id}{'desc'}="S${id}-$desc";
 	}
 	else {
-		$switch_id{$id}{'desc'}="${tn} S${id}";
+		$switch_id{$id}{'desc'}="S${id}";
 	}
 	$switch_id{$id}{'byteidx'}=$byteidx;
 	$switch_id{$id}{'bitidx'}=$bitidx;
@@ -225,7 +218,47 @@ foreach $id (sort {$a<=>$b} keys %switch_id) {
 		$switch_id{$id}{'byteidx'}, $switch_id{$id}{'target'});
 	print "\n";
 }
+# DTC Code list
 print "            </switches>\n";
+print "            <dtcodes>\n";
+my $id, $name, $tmpaddr, $memaddr, $bitidx;
+if ($locale eq "de") {
+}
+	$sql = qq(
+		SELECT dtcode.id, dtcode.name,
+		dtcode.tmpaddr, dtcode.memaddr, dtcode.bitidx
+		FROM dtcode
+		WHERE reserved is NULL
+	  );
+if ($locale eq "en") {
+	$sql = qq(
+		SELECT dtcode.id, dtcode.name,
+		dtcode.tmpaddr, dtcode.memaddr, dtcode.bitidx
+		FROM dtcode
+		WHERE reserved is NULL
+	  );
+}
+$sth = $dbh->prepare($sql);
+$sth->execute;
+$sth->bind_columns(\$id, \$name, \$tmpaddr, \$memaddr, \$bitidx);
+while ($sth->fetch) {
+	$dtcode_id{$id}{'name'}=$name;
+	$dtcode_id{$id}{'tmpaddr'}=$tmpaddr;
+	$dtcode_id{$id}{'memaddr'}=$memaddr;
+	$dtcode_id{$id}{'bitidx'}=$bitidx;
+	}
+$sth->finish;
+
+# Print out DTC
+foreach $id (sort {$a<=>$b} keys %dtcode_id) {
+	$dtcName = $dtcode_id{$id}{'name'};
+	$dtcName =~ s/&/&amp\;/;
+	printf('                <dtcode id="D%d" name="%s" desc="D%d" tmpaddr="0x%s" memaddr="0x%s" bit="%s" />',
+		$id, $dtcName, $id, $dtcode_id{$id}{'tmpaddr'},
+		$dtcode_id{$id}{'memaddr'}, $dtcode_id{$id}{'bitidx'});
+	print "\n";
+}
+print "            </dtcodes>\n";
 print "            <ecuparams>\n";
 
 # ECU parameter list
@@ -265,15 +298,29 @@ foreach $id (sort {$a<=>$b} keys %ecuparam_id) {
 	my $param_serial = $ecuparam_id{$id};
 	my @ecuids = get_ecu_id($param_serial);
 	print "                <ecuparam id=\"E${id}\" name=\"$ecuparam_id{$id}{'name'}\" desc=\"$ecuparam_id{$id}{'desc'}\" target=\"$ecuparam_id{$id}{'target'}\">\n";
-	foreach $ecuid (@ecuids) {
-		my $length = ''; 
-		if ($address_id{$ecuid}{$param_serial}{'length'} > 1) {
-			$length = " length=\"$address_id{$ecuid}{$param_serial}{'length'}\"";
+	if ($groupEcuId) {
+		foreach $addrgrp (sort {$a<=>$b} keys %{$address_group{$id}}) {
+			my $length = '';
+			if ($address_group{$id}{$addrgrp}{'length'} > 1) {
+				$length = " length=\"$address_group{$id}{$addrgrp}{'length'}\"";
+			}
+			$addressList = $address_group{$id}{$addrgrp}{'ecuidList'};
+			$addressList =~ s/,$//;
+			print "                    <ecu id=\"${addressList}\">\n";
+			printf("                        <address${length}>0x%06X</address>\n", $addrgrp);
+			print "                    </ecu>\n";
 		}
-		my $bit = "$address_id{$ecuid}{$param_serial}{'bit'}" if ($address_id{$ecuid}{$param_serial}{'bit'});
-		print "                    <ecu id=\"${ecuid}\">\n";
-		print "                        <address${length}>0x$address_id{$ecuid}{$param_serial}{'address'}</address>\n";
-		print "                    </ecu>\n";
+	}
+	else {
+		foreach $ecuid (@ecuids) {
+			my $length = '';
+			if ($address_id{$ecuid}{$param_serial}{'length'} > 1) {
+				$length = " length=\"$address_id{$ecuid}{$param_serial}{'length'}\"";
+			}
+			print "                    <ecu id=\"${ecuid}\">\n";
+			print "                        <address${length}>0x$address_id{$ecuid}{$param_serial}{'address'}</address>\n";
+			print "                    </ecu>\n";
+		}
 	}
 	print "                    <conversions>\n";
 	get_conversion_id($param_serial);
@@ -293,11 +340,12 @@ sub get_address_id {
 	# get the addresses, length and bit for all of the Extended Parameters by ECU ID 
 	my $ecuid, $ecuparam, $address, $length, $bit;
 	my $sql = qq( 
-		SELECT ecuid.ecuid, ecuparam.serial, address.address, address.length, address.bit
+		SELECT ecuid.ecuid, ecuparam.id, address.address, address.length, address.bit
 		FROM ecuid
 		LEFT JOIN ecuparam_rel ON ecuid.serial = ecuparam_rel.ecuidid
 		LEFT JOIN address ON ecuparam_rel.addressid=address.serial
 		LEFT JOIN ecuparam ON ecuparam_rel.ecuparamid=ecuparam.serial
+		ORDER BY ecuid.ecuid
 		);
 	my $sth = $dbh->prepare($sql);
 	$sth->execute();
@@ -306,6 +354,8 @@ sub get_address_id {
 		$address_id{$ecuid}{$ecuparam}{'address'} = $address;
 		$address_id{$ecuid}{$ecuparam}{'length'} = $length;
 		$address_id{$ecuid}{$ecuparam}{'bit'} = $bit;
+		$address_group{$ecuparam}{hex($address)}{'ecuidList'} .= "${ecuid},";
+		$address_group{$ecuparam}{hex($address)}{'length'} = $length;
 	}
 	return;
 }
