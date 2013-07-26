@@ -9,8 +9,8 @@
 #
 # Purpose
 #	Reads the database and dumps logger XML file to STDOUT
-#	Version:    9
-#	Update:     May. 21/2013
+#	Version:    10
+#	Update:     July. 23/2013
 #------------------------------------------------------------------------------------------
 
 # dump format
@@ -225,17 +225,16 @@ my $id, $name, $tmpaddr, $memaddr, $bitidx;
 if ($locale eq "de") {
 }
 	$sql = qq(
-		SELECT dtcode.id, dtcode.name,
-		dtcode.tmpaddr, dtcode.memaddr, dtcode.bitidx
+		SELECT dtcode.id, dtcode_xlt_de.code_xlt, dtcode.tmpaddr, dtcode.memaddr, dtcode.bitidx
 		FROM dtcode
-		WHERE reserved is NULL
+		INNER JOIN dtcode_xlt_de ON dtcode.translation_id = dtcode_xlt_de.serial
+		WHERE dtcode.reserved is NULL
 	  );
 if ($locale eq "en") {
 	$sql = qq(
-		SELECT dtcode.id, dtcode.name,
-		dtcode.tmpaddr, dtcode.memaddr, dtcode.bitidx
+		SELECT dtcode.id, dtcode.name, dtcode.tmpaddr, dtcode.memaddr, dtcode.bitidx
 		FROM dtcode
-		WHERE reserved is NULL
+		WHERE dtcode.reserved is NULL
 	  );
 }
 $sth = $dbh->prepare($sql);
