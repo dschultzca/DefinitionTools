@@ -185,6 +185,7 @@ static CreatePcodeArray() {
 	auto pcArray;
 	pcArray = CreateArray("PCODEARRAY");
 	SetArrayString(pcArray, 0x0000, "PASS CODE (NO DTC DETECTED) ");
+	SetArrayString(pcArray, 0x0009, "ENGINE POSITION SYSTEM PERFORMANCE BANK 2");
 	SetArrayString(pcArray, 0x0011, "CAMSHAFT POS. - TIMING OVER-ADVANCED 1");
 	SetArrayString(pcArray, 0x0014, "EXHAUST AVCS SYSTEM 1 RANGE/PERF");
 	SetArrayString(pcArray, 0x0016, "CRANKSHAFT/CAMSHAFT CORRELATION 1A");
@@ -361,6 +362,7 @@ static CreatePcodeArray() {
 	SetArrayString(pcArray, 0x0519, "IDLE CONTROL MALFUNCTION (FAIL-SAFE)");
 	SetArrayString(pcArray, 0x0545, "EGT SENSOR CIRCUIT LOW");
 	SetArrayString(pcArray, 0x0546, "EGT SENSOR CIRCUIT HIGH");
+	SetArrayString(pcArray, 0x0557, "BRAKE BOOSTER PRESSURE SENSOR CIRCUIT LOW");
 	SetArrayString(pcArray, 0x0558, "ALTERNATOR CIRCUIT LOW");
 	SetArrayString(pcArray, 0x0559, "ALTERNATOR CIRCUIT HIGH");
 	SetArrayString(pcArray, 0x0562, "SYSTEM VOLTAGE LOW");
@@ -510,8 +512,10 @@ static CreatePcodeArray() {
 	SetArrayString(pcArray, 0xC101, "CAN LOST COMMUNICATION WITH TCM");
 	SetArrayString(pcArray, 0xC122, "CAN LOST COMMUNICATION WITH VDC");
 	SetArrayString(pcArray, 0xC140, "CAN LOST COMMUNICATION WITH BIU");
+	SetArrayString(pcArray, 0xC155, "LOST COMMUNICATION WITH INSTRUMENT PANEL CLUSTER (IPC) CONTROL MODULE");
 	SetArrayString(pcArray, 0xC402, "CAN INVALID DATA RECEIVED FROM TCM");
 	SetArrayString(pcArray, 0xC416, "CAN INVALID DATA RECEIVED FROM VDC");
 	SetArrayString(pcArray, 0xC422, "CAN INVALID DATA RECEIVED FROM BIU");
+	SetArrayString(pcArray, 0xC423, "INVALID DATA RECEIVED FROM INSTRUMENT PANEL CLUSTER CONTROL MODULE");
 	SetArrayString(pcArray, 0xFFFE, "PASS CODE (NO DTC DETECTED)");
 }
