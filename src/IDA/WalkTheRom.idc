@@ -1,17 +1,16 @@
 /*
-* Copyright (C) 2010+  Dale C. Schultz
+* Copyright (C) 2013  Dale C. Schultz
 * RomRaider member ID: dschultz
 *
 * You are free to use this script for any purpose, but please keep
 * notice of where it came from!
 *
-* Version: 1
-*
+* Version: 2
 */
 
 #include <idc.idc>
 static main() {
-	auto currAddr, currName, fout, textOut, namesArray, xSize, ySize, xSizeAr, ySizeAr;
+	auto currAddr, currName, fout, textOut, namesArray, xSize, ySize, xSizeAr, ySizeAr, lastAddr;
 	namesArray = GetArrayId("myNAMES");
 	DeleteArray(namesArray);
 	namesArray = CreateArray("myNAMES");
@@ -24,7 +23,8 @@ static main() {
 
 	// walk the ROM and list the names and addresses
 	currAddr = 0x00000000;
-	while (currAddr <= 0x000FFFFE) {
+	lastAddr = SegEnd(currAddr);
+	while (currAddr < lastAddr) {
 		currName = Name(currAddr);
 		if (currName != "") {
 			if (
