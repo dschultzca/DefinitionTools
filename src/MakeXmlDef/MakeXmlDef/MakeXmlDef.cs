@@ -1,5 +1,5 @@
 ﻿/*
- * Copyright (C) 2010+  Dale C. Schultz
+ * Copyright (C) 2013  Dale C. Schultz
  * RomRaider member ID: dschultz
  *
  * You are free to use this source for any purpose, but please keep
@@ -43,18 +43,18 @@ namespace MakeXmlDef
                     string[] result = Regex.Split(line, pattern);
                     if (result.Length == 4 && !addrTable.Contains(result[0])) // 3D Table with X & Y size
                     {
-                        addrTable.Add(result[0], result[1].Substring(3, 5));
+                        addrTable.Add(result[0], result[1]);
                         sizexTable.Add(result[0], result[2]);
                         sizeyTable.Add(result[0], result[3]);
                     }
                     if (result.Length == 3 && !addrTable.Contains(result[0])) // 2D Table with Y size
                     {
-                        addrTable.Add(result[0], result[1].Substring(3, 5));
+                        addrTable.Add(result[0], result[1]);
                         sizeyTable.Add(result[0], result[2]);
                     }
                     if (result.Length == 2 && !addrTable.Contains(result[0])) // 1D Table no size
                     {
-                        addrTable.Add(result[0], result[1].Substring(3, 5));
+                        addrTable.Add(result[0], result[1]);
                     }
                 }
                 file.Close();
@@ -97,7 +97,7 @@ namespace MakeXmlDef
                     if (addrTable.Contains(name) && attrList["storageaddress"] != null)
                     {
                         storageAddress = addrTable[name].ToString();
-                        attrList["storageaddress"].Value = storageAddress;
+						attrList["storageaddress"].Value = Convert.ToInt32(storageAddress , 16).ToString("X");
                         //Console.WriteLine(name + " = " + attrList["storageaddress"].Value);
 
                         string path1 = "/roms/rom/table[@name='" + rawName + "']";
@@ -198,7 +198,7 @@ namespace MakeXmlDef
                                     axis = ConvertName(name + "_" + axis);
                                     if (addrTable.Contains(axis))
                                     {
-                                        cattrList["storageaddress"].Value = addrTable[axis].ToString();
+										cattrList["storageaddress"].Value = Convert.ToInt32(addrTable[axis].ToString() , 16).ToString("X");
                                     }
                                     //Console.WriteLine(axis + " = " + cattrList["storageaddress"].Value);
                                 }
@@ -264,10 +264,10 @@ namespace MakeXmlDef
         private static void Usage()
         {
             Console.WriteLine("MakeXmlDef Usage:");
-            Console.WriteLine("MakeXmlDef.exe <Xml-template> <IDA-addresses> <output-file>");
+            Console.WriteLine("MakeXmlDef.exe <XML-template> <IDA-addresses> <output-file>");
             Console.WriteLine();
-            Console.WriteLine("Where <Xml-template>  is a XML file that will be used as a template to modify.");
-            Console.WriteLine("      <IDA-addresses> is text file containing Table names and Addresses from");
+            Console.WriteLine("Where <XML-template>  is an XML file that will be used as a template to modify.");
+            Console.WriteLine("      <IDA-addresses> is a text file containing Table names and Addresses from");
             Console.WriteLine("                      the IDA Names Window.");
             Console.WriteLine("      <output-file>   is the file to save the output to.");
         }
