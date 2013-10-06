@@ -23,7 +23,7 @@
 #include <idc.idc>
 static main() {
 	auto i, startFrom, addrFrom, CelSwTable, pcodeEnabled, pcount, pcArray, currentCode, proceed, endCheck, fout, resultArray, pOOOO, strPcode, alpha, pDesc;
-	auto byteOffset, codeBit, ync, offset;
+	auto byteOffset, codeBit, ync, offset, combined, tableSize, tableEnd, celCount;
 	pcArray = GetArrayId("PCODEARRAY");
 	DeleteArray(pcArray);
 	resultArray = GetArrayId("RESULTARRAY");
@@ -31,56 +31,64 @@ static main() {
 	CreatePcodeArray();
 	pcArray = GetArrayId("PCODEARRAY");
 
-	ync = AskYN(-1, "This question helps determine the CEL table format.\n\nIs this a CAN ROM (2008+)?"); // -1:cancel,0-no,1-ok
+	ync = AskYN(-1, "Are the CEL Switch and CEL Routine tables combined?"); // -1:cancel,0-no,1-ok
 	if (ync == -1) {
 		Message("Aborting ROM formating at user request\n");
 		return 0;
 	}
 	else if (ync == 1) {
+		tableEnd = AskAddr(0,"Enter the CEL Table End address, or 0 to cancel:\n");
+		if (tableEnd <= here) {
+			Message("Script cancelled by user, invalid table end address.\n");
+			return;
+		}
 		offset = 2;
+		combined = 1;
+		tableSize = 12;
 	}
 	else {
-		offset = 1;
+		ync = AskYN(-1, "This question helps determine the CEL table format.\n\nIs this a CAN ROM (2008+)?"); // -1:cancel,0-no,1-ok
+		if (ync == -1) {
+			Message("Aborting ROM formating at user request\n");
+			return 0;
+		}
+		else if (ync == 1) {
+			offset = 2;
+		}
+		else {
+			offset = 1;
+		}
+		CelSwTable = AskAddr(0,"Make sure the cursor is on the CEL Routine Table Start address then,\nEnter the CEL Switch Table Starting Address:\n");
+		if (CelSwTable < 1) {
+			Message("Script cancelled by user.\n");
+			return;
+		}
+		combined = 0;
+		tableSize = 20;
+		tableEnd = 99999999;
 	}
 
-	CelSwTable = AskAddr(0,"Make sure the cursor is on the CEL Routine Table Start address then,\nEnter the CEL Switch Table Starting Address:\n");
-	if (CelSwTable < 1) {
-		Message("Script cancelled by user.\n");
-		return;
-	}
 	fout = fopen("pcode_def.xml", "w");
 	resultArray = CreateArray("RESULTARRAY");
 	startFrom = here;
 	addrFrom = here;
 	pcount = 0;
+	celCount = 0;
 	endCheck = 1;	// true
 	do {
 		alpha = 0;
-		MakeUnknown(addrFrom, 20, DOUNK_SIMPLE);
-		for ( i=0; i < 20; i=i+1 ) {
-			MakeRptCmt(addrFrom+i, "");
+		if (combined) {
+			CelSwTable = FormatCombinedTable(addrFrom);
+			byteOffset = Byte(addrFrom + 1);
+			currentCode = Word(addrFrom + 5);
+			pcount = 0;
 		}
-		MakeByte(addrFrom);
-		MakeByte(addrFrom+1);	// pre-CAN offset into DTC storage table
-		MakeByte(addrFrom+2);	// pre-CAN DTC bit mask (sets bit for active)
-								// CAN offset into DTC storage table
-		MakeByte(addrFrom+3);	// CAN DTC bit mask (sets bit for active)
-		MakeWord(addrFrom+4);	// Diagnostic Trouble Code in this word
-		MakeByte(addrFrom+6);
-		MakeByte(addrFrom+7);
-		MakeByte(addrFrom+8);
-		MakeByte(addrFrom+9);
-		MakeByte(addrFrom+10);
-		MakeByte(addrFrom+11);
-		MakeDword(addrFrom+12);	// Subroutine address
-		MakeByte(addrFrom+16);
-		MakeByte(addrFrom+17);
-		MakeByte(addrFrom+18);
-		MakeByte(addrFrom+19);
-		MakeUnknown(CelSwTable+pcount, 1, DOUNK_SIMPLE);
-		MakeByte(CelSwTable+pcount);
-		byteOffset = Byte(addrFrom + offset);
-		codeBit = Byte(addrFrom +1 + offset);
+		else {
+			FormatRoutinesTable(addrFrom, CelSwTable, pcount);
+			currentCode = Word(addrFrom + 4);
+			byteOffset = Byte(addrFrom + offset);
+			codeBit = Byte(addrFrom + 1 + offset);
+		}
 		if (codeBit == 0x01) {
 			codeBit = 0;
 		}
@@ -105,7 +113,6 @@ static main() {
 		else if (codeBit == 0x080) {
 			codeBit = 7;
 		}
-		currentCode = Word(addrFrom+4);
 
 		// Check for P codes with Alphabetical characters in them
 		strPcode = form("%04X",currentCode);
@@ -115,8 +122,8 @@ static main() {
 
 		pcodeEnabled = CheckEnabled(CelSwTable, currentCode, pcount);
 		strPcode = StringOfPcode(currentCode);
-		MakeRptCmt(addrFrom+4, form("%s - %s %s", pcodeEnabled, strPcode, GetArrayElement(AR_STR, pcArray, currentCode)));
-		Message(form("%s, 0x%s, byte:%02X, bit:%d, %s %s\n", pcodeEnabled, ltoa(CelSwTable+pcount, 16), byteOffset, codeBit, strPcode, GetArrayElement(AR_STR, pcArray, currentCode)));
+		MakeRptCmt(addrFrom + 4 + combined, form("%s - %s %s", pcodeEnabled, strPcode, GetArrayElement(AR_STR, pcArray, currentCode)));
+		Message(form("%s, 0x%s, LUT_idx:%02X, byte:%02X, bit:%d, %s %s\n", pcodeEnabled, ltoa(CelSwTable+pcount, 16), celCount, byteOffset, codeBit, strPcode, GetArrayElement(AR_STR, pcArray, currentCode)));
 		if (endCheck != 0 && alpha != 1) {
 			if (pcodeEnabled == "E") {
 				pDesc = GetArrayElement(AR_STR, pcArray, currentCode);
@@ -129,12 +136,14 @@ static main() {
 				}
 			}
 		}
-		addrFrom = addrFrom+20;
+		addrFrom = addrFrom + tableSize;
+		celCount = celCount + 1;
 		pcount = pcount + 1;
 		if (pcount > 280) 						{ endCheck = 0; Message("More than 280 P codes analyzed\n"); }
 		if (CelSwTable + pcount == startFrom)	{ endCheck = 0; Message("Overrunning CEL Switch start address\n"); }
+		if (addrFrom >= tableEnd)				{ endCheck = 0; Message("Table End address reached\n"); }
 	} while (endCheck != 0);
-	Message("Finished, " + form("%d",pcount) + " P codes defined.\n");
+	Message("Finished, " + form("%d", celCount) + " P codes defined.\n");
 	currentCode = GetFirstIndex(AR_STR, resultArray);
 	Message("Writing pcode_def.xml file in the directory where the ROM file is stored.\n");
 	while (currentCode != -1) {
@@ -147,6 +156,53 @@ static main() {
 	fclose(fout);
 	DeleteArray(pcArray);
 	DeleteArray(resultArray);
+}
+
+static FormatRoutinesTable(addrFrom, CelSwTable, pcount) {
+	auto i;
+	MakeUnknown(addrFrom, 20, DOUNK_SIMPLE);
+	for ( i=0; i < 20; i = i + 1 ) {
+		MakeRptCmt(addrFrom + i, "");
+	}
+	MakeByte(addrFrom);
+	MakeByte(addrFrom + 1);	// pre-CAN offset into DTC storage table
+	MakeByte(addrFrom + 2);	// pre-CAN DTC bit mask (sets bit for active)
+							// CAN offset into DTC storage table
+	MakeByte(addrFrom + 3);	// CAN DTC bit mask (sets bit for active)
+	MakeWord(addrFrom + 4);	// Diagnostic Trouble Code in this word
+	MakeByte(addrFrom + 6);
+	MakeByte(addrFrom + 7);
+	MakeByte(addrFrom + 8);
+	MakeByte(addrFrom + 9);
+	MakeByte(addrFrom + 10);
+	MakeByte(addrFrom + 11);
+	MakeDword(addrFrom + 12);	// Subroutine address
+	MakeByte(addrFrom + 16);
+	MakeByte(addrFrom + 17);
+	MakeByte(addrFrom + 18);
+	MakeByte(addrFrom + 19);
+	MakeUnknown(CelSwTable + pcount, 1, DOUNK_SIMPLE);
+	MakeByte(CelSwTable + pcount);
+}
+
+static FormatCombinedTable(addrFrom) {
+	auto i;
+	MakeUnknown(addrFrom, 12, DOUNK_SIMPLE);
+	for ( i=0; i < 12; i = i + 1 ) {
+		MakeRptCmt(addrFrom + i, "");
+	}
+	MakeByte(addrFrom);		// CEL Switch
+	MakeByte(addrFrom + 1);	// byte 0-F
+	MakeByte(addrFrom + 2);
+	MakeByte(addrFrom + 3);
+	MakeByte(addrFrom + 4);
+	MakeWord(addrFrom + 5);	// Diagnostic Trouble Code in this word
+	MakeByte(addrFrom + 7);
+	MakeByte(addrFrom + 8);	// byte 0 or 1
+	MakeByte(addrFrom + 9);
+	MakeByte(addrFrom + 10);
+	MakeByte(addrFrom + 11);
+	return addrFrom;
 }
 
 static CheckEnabled(CelSwTable, currentCode, pcount) {
@@ -186,13 +242,21 @@ static CreatePcodeArray() {
 	pcArray = CreateArray("PCODEARRAY");
 	SetArrayString(pcArray, 0x0000, "PASS CODE (NO DTC DETECTED) ");
 	SetArrayString(pcArray, 0x0009, "ENGINE POSITION SYSTEM PERFORMANCE BANK 2");
+	SetArrayString(pcArray, 0x000A, "A CAMSHAFT POSITION SLOW RESPONSE (BANK 1)");
+	SetArrayString(pcArray, 0x000B, "B CAMSHAFT POSITION SLOW RESPONSE (BANK 1)");
+	SetArrayString(pcArray, 0x000C, "A CAMSHAFT POSITION SLOW RESPONSE (BANK 2)");
+	SetArrayString(pcArray, 0x000D, "B CAMSHAFT POSITION SLOW RESPONSE (BANK 2)");
+	SetArrayString(pcArray, 0x0010, "A CAMSHAFT POSITION ACTUATOR CIRCUIT/OPEN (BANK 1)");
 	SetArrayString(pcArray, 0x0011, "CAMSHAFT POS. - TIMING OVER-ADVANCED 1");
+	SetArrayString(pcArray, 0x0013, "B CAMSHAFT POSITION ACTUATOR CIRCUIT/OPEN (BANK 1)");
 	SetArrayString(pcArray, 0x0014, "EXHAUST AVCS SYSTEM 1 RANGE/PERF");
 	SetArrayString(pcArray, 0x0016, "CRANKSHAFT/CAMSHAFT CORRELATION 1A");
 	SetArrayString(pcArray, 0x0017, "CRANK/CAM TIMING B FAILURE 1");
 	SetArrayString(pcArray, 0x0018, "CRANKSHAFT/CAMSHAFT CORRELATION 2A");
 	SetArrayString(pcArray, 0x0019, "CRANK/CAM TIMING B FAILURE 2");
+	SetArrayString(pcArray, 0x0020, "A CAMSHAFT POSITION ACTUATOR CIRCUIT/OPEN (BANK 2)");
 	SetArrayString(pcArray, 0x0021, "CAMSHAFT POS. - TIMING OVER-ADVANCED 2");
+	SetArrayString(pcArray, 0x0023, "B CAMSHAFT POSITION ACTUATOR CIRCUIT/OPEN (BANK 2)");
 	SetArrayString(pcArray, 0x0024, "EXHAUST AVCS SYSTEM 2 RANGE/PERF");
 	SetArrayString(pcArray, 0x0026, "OSV SOLENOID VALVE CIRCUIT RANGE/PERF B1");
 	SetArrayString(pcArray, 0x0028, "OSV SOLENOID VALVE CIRCUIT RANGE/PERF B2");
@@ -208,13 +272,13 @@ static CreatePcodeArray() {
 	SetArrayString(pcArray, 0x0052, "HO2S CIRCUIT HIGH B2 S1");
 	SetArrayString(pcArray, 0x0057, "HO2S CIRCUIT LOW B2 S2");
 	SetArrayString(pcArray, 0x0058, "HO2S CIRCUIT HIGH B2 S2");
-	SetArrayString(pcArray, 0x050A, "COLD START IDLE AIR CONTROL SYSTEM PERFORMANCE");
-	SetArrayString(pcArray, 0x050B, "COLD START IGNITION TIMING PERFORMANCE");
 	SetArrayString(pcArray, 0x0068, "MAP SENSOR RANGE/PERF");
 	SetArrayString(pcArray, 0x0076, "INTAKE VALVE CIRCUIT LOW (BANK 1)");
 	SetArrayString(pcArray, 0x0077, "INTAKE VALVE CONTROL HIGH (BANK 1)");
 	SetArrayString(pcArray, 0x0082, "INTAKE VALVE CONTROL LOW (BANK 2)");
 	SetArrayString(pcArray, 0x0083, "INTAKE VALVE CONTROL HIGH (BANK 2)");
+	SetArrayString(pcArray, 0x0087, "FUEL RAIL/SYSTEM PRESSURE - TOO LOW");
+	SetArrayString(pcArray, 0x0088, "FUEL RAIL/SYSTEM PRESSURE - TOO HIGH");
 	SetArrayString(pcArray, 0x0091, "FUEL PRESSURE REGULATOR 1 CONTROL LOW");
 	SetArrayString(pcArray, 0x0092, "FUEL PRESSURE REGULATOR 1 CONTROL HIGH");
 	SetArrayString(pcArray, 0x0101, "MAF SENSOR RANGE/PERF");
@@ -225,6 +289,7 @@ static CreatePcodeArray() {
 	SetArrayString(pcArray, 0x0111, "IAT SENSOR RANGE/PERF");
 	SetArrayString(pcArray, 0x0112, "IAT SENSOR LOW INPUT");
 	SetArrayString(pcArray, 0x0113, "IAT SENSOR HIGH INPUT");
+	SetArrayString(pcArray, 0x0116, "COOLANT TEMP SENSOR 1 CIRCUIT RANGE/PERF");
 	SetArrayString(pcArray, 0x0117, "COOLANT TEMP SENSOR LOW INPUT");
 	SetArrayString(pcArray, 0x0118, "COOLANT TEMP SENSOR HIGH INPUT");
 	SetArrayString(pcArray, 0x0121, "TPS RANGE/PERF");
@@ -278,6 +343,9 @@ static CreatePcodeArray() {
 	SetArrayString(pcArray, 0x0181, "FUEL TEMP SENSOR A RANGE/PERF");
 	SetArrayString(pcArray, 0x0182, "FUEL TEMP SENSOR A LOW INPUT");
 	SetArrayString(pcArray, 0x0183, "FUEL TEMP SENSOR A HIGH INPUT");
+	SetArrayString(pcArray, 0x0191, "FUEL RAIL PRESSURE SENSOR A CIRCUIT RANGE/PERF");
+	SetArrayString(pcArray, 0x0192, "FUEL RAIL PRESSURE SENSOR CIRCUIT LOW INPUT");
+	SetArrayString(pcArray, 0x0193, "FUEL RAIL PRESSURE SENSOR CIRCUIT HIGH INPUT");
 	SetArrayString(pcArray, 0x0196, "OIL TEMP SENSOR RANGE/PERF");
 	SetArrayString(pcArray, 0x0197, "OIL TEMP SENSOR LOW");
 	SetArrayString(pcArray, 0x0198, "OIL TEMP SENSOR HIGH");
@@ -297,6 +365,7 @@ static CreatePcodeArray() {
 	SetArrayString(pcArray, 0x0264, "FUEL INJECTOR #2 CIRCUIT LOW");
 	SetArrayString(pcArray, 0x0267, "FUEL INJECTOR #3 CIRCUIT LOW");
 	SetArrayString(pcArray, 0x0270, "FUEL INJECTOR #4 CIRCUIT LOW");
+	SetArrayString(pcArray, 0x0300, "RANDOM/MULTIPLE CYLINDER MISFIRE DETECTED");
 	SetArrayString(pcArray, 0x0301, "MISFIRE CYLINDER 1");
 	SetArrayString(pcArray, 0x0302, "MISFIRE CYLINDER 2");
 	SetArrayString(pcArray, 0x0303, "MISFIRE CYLINDER 3");
@@ -313,6 +382,7 @@ static CreatePcodeArray() {
 	SetArrayString(pcArray, 0x0340, "CAMSHAFT POS. SENSOR A MALFUNCTION");
 	SetArrayString(pcArray, 0x0341, "CAMSHAFT POS. SENSOR A RANGE/PERF");
 	SetArrayString(pcArray, 0x0345, "CAMSHAFT POS. SENSOR A BANK 2");
+	SetArrayString(pcArray, 0x0346, "CAMSHAFT POS. SENSOR A CIRCUIT RANGE/PERF BANK 2");
 	SetArrayString(pcArray, 0x0350, "IGNITION COIL PRIMARY/SECONDARY");
 	SetArrayString(pcArray, 0x0351, "IGNITION COIL A PRIMARY/SECONDARY CIRCUIT MALFUNCTION");
 	SetArrayString(pcArray, 0x0352, "IGNITION COIL B PRIMARY/SECONDARY CIRCUIT MALFUNCTION");
@@ -321,9 +391,9 @@ static CreatePcodeArray() {
 	SetArrayString(pcArray, 0x0355, "IGNITION COIL E PRIMARY/SECONDARY CIRCUIT MALFUNCTION");
 	SetArrayString(pcArray, 0x0356, "IGNITION COIL F PRIMARY/SECONDARY CIRCUIT MALFUNCTION");
 	SetArrayString(pcArray, 0x0365, "CAMSHAFT POS. SENSOR B BANK 1");
-	SetArrayString(pcArray, 0x0365, "CAMSHAFT POS. SENSOR B BANK 1");
+	SetArrayString(pcArray, 0x0366, "CAMSHAFT POS. SENSOR B CIRCUIT RANGE/PERF BANK 1");
 	SetArrayString(pcArray, 0x0390, "CAMSHAFT POS. SENSOR B BANK 2");
-	SetArrayString(pcArray, 0x0390, "CAMSHAFT POS. SENSOR B BANK 2");
+	SetArrayString(pcArray, 0x0391, "CAMSHAFT POS. SENSOR B CIRCUIT RANGE/PERF BANK 2");
 	SetArrayString(pcArray, 0x0400, "EGR FLOW");
 	SetArrayString(pcArray, 0x0410, "SECONDARY AIR PUMP SYSTEM");
 	SetArrayString(pcArray, 0x0411, "SECONDARY AIR PUMP INCORRECT FLOW");
@@ -354,17 +424,23 @@ static CreatePcodeArray() {
 	SetArrayString(pcArray, 0x0500, "VEHICLE SPEED SENSOR A");
 	SetArrayString(pcArray, 0x0502, "VEHICLE SPEED SENSOR LOW INPUT");
 	SetArrayString(pcArray, 0x0503, "VEHICLE SPEED SENSOR INTERMITTENT");
+	SetArrayString(pcArray, 0x0504, "BRAKE SWITCH A / B CORRELATION");
 	SetArrayString(pcArray, 0x0506, "IDLE CONTROL RPM LOWER THAN EXPECTED");
 	SetArrayString(pcArray, 0x0507, "IDLE CONTROL RPM HIGH THAN EXPECTED");
 	SetArrayString(pcArray, 0x0508, "IDLE CONTROL CIRCUIT LOW");
 	SetArrayString(pcArray, 0x0509, "IDLE CONTROL CIRCUIT HIGH");
+	SetArrayString(pcArray, 0x050A, "COLD START IDLE AIR CONTROL SYSTEM PERFORMANCE");
+	SetArrayString(pcArray, 0x050B, "COLD START IGNITION TIMING PERFORMANCE");
 	SetArrayString(pcArray, 0x0512, "STARTER REQUEST CIRCUIT");
+	SetArrayString(pcArray, 0x0516, "BATTERY TEMPERATURE SENSOR CIRCUIT LOW");
+	SetArrayString(pcArray, 0x0517, "BATTERY TEMPERATURE SENSOR CIRCUIT HIGH");
 	SetArrayString(pcArray, 0x0519, "IDLE CONTROL MALFUNCTION (FAIL-SAFE)");
 	SetArrayString(pcArray, 0x0545, "EGT SENSOR CIRCUIT LOW");
 	SetArrayString(pcArray, 0x0546, "EGT SENSOR CIRCUIT HIGH");
 	SetArrayString(pcArray, 0x0557, "BRAKE BOOSTER PRESSURE SENSOR CIRCUIT LOW");
 	SetArrayString(pcArray, 0x0558, "ALTERNATOR CIRCUIT LOW");
 	SetArrayString(pcArray, 0x0559, "ALTERNATOR CIRCUIT HIGH");
+	SetArrayString(pcArray, 0x0560, "BACKUP POWER SUPPLY");
 	SetArrayString(pcArray, 0x0562, "SYSTEM VOLTAGE LOW");
 	SetArrayString(pcArray, 0x0563, "SYSTEM VOLTAGE HIGH");
 	SetArrayString(pcArray, 0x0565, "CRUISE CONTROL SET SIGNAL");
@@ -372,7 +448,14 @@ static CreatePcodeArray() {
 	SetArrayString(pcArray, 0x0602, "CONTROL MODULE PROG. ERROR");
 	SetArrayString(pcArray, 0x0604, "CONTROL MODULE RAM ERROR");
 	SetArrayString(pcArray, 0x0605, "CONTROL MODULE ROM ERROR");
+	SetArrayString(pcArray, 0x0606, "MICRO-COMPUTER (CPU FAILURE)");
 	SetArrayString(pcArray, 0x0607, "CONTROL MODULE PERFORMANCE");
+	SetArrayString(pcArray, 0x060A, "INTERNAL CONTROL MODULE MONITORING PROCESSOR PERFORMANCE");
+	SetArrayString(pcArray, 0x060B, "INTERNAL CONTROL MODULE A/D PROCESSING PERFORMANCE");
+	SetArrayString(pcArray, 0x0616, "STARTER RELAY CIRCUIT (LOW)");
+	SetArrayString(pcArray, 0x0617, "STARTER RELAY CIRCUIT (HIGH)");
+	SetArrayString(pcArray, 0x062D, "NO.1 FUEL INJECTOR DRIVER CIRCUIT PERFORMANCE");
+	SetArrayString(pcArray, 0x062F, "EEPROM ERROR");
 	SetArrayString(pcArray, 0x0638, "THROTTLE ACTUATOR RANGE/PERF");
 	SetArrayString(pcArray, 0x0691, "RADIATOR FAN CIRCUIT LOW");
 	SetArrayString(pcArray, 0x0692, "RADIATOR FAN CIRCUIT HIGH");
@@ -395,6 +478,7 @@ static CreatePcodeArray() {
 	SetArrayString(pcArray, 0x0771, "AT LOW CLUTCH TIMING SOLENOID MALFUNCTION");
 	SetArrayString(pcArray, 0x0778, "AT 2-4 BRAKE PRESSURE SOLENOID MALFUNCTION");
 	SetArrayString(pcArray, 0x0785, "AT 2-4 BRAKE TIMING SOLENOID MALFUNCTION");
+	SetArrayString(pcArray, 0x081A, "STARTER CUT RELAY SYSTEM CIRCUIT (LOW)");
 	SetArrayString(pcArray, 0x0851, "NEUTRAL SWITCH INPUT LOW");
 	SetArrayString(pcArray, 0x0852, "NEUTRAL SWITCH INPUT HIGH");
 	SetArrayString(pcArray, 0x0864, "TCM COMMUNICATION RANGE/PERF");
@@ -414,6 +498,7 @@ static CreatePcodeArray() {
 	SetArrayString(pcArray, 0x1095, "TGV SIGNAL 1 (SHORT)");
 	SetArrayString(pcArray, 0x1096, "TGV SIGNAL 2 (OPEN)");
 	SetArrayString(pcArray, 0x1097, "TGV SIGNAL 2 (SHORT)");
+	SetArrayString(pcArray, 0x1109, "DETECTED THROTTLE DEPOSIT");
 	SetArrayString(pcArray, 0x1110, "ATMOS. PRESSURE SENSOR LOW INPUT");
 	SetArrayString(pcArray, 0x1111, "ATMOS. PRESSURE SENSOR HIGH INPUT");
 	SetArrayString(pcArray, 0x1152, "FRONT O2 SENSOR RANGE/PERF LOW B1 S1");
@@ -421,6 +506,13 @@ static CreatePcodeArray() {
 	SetArrayString(pcArray, 0x1154, "O2 SENSOR RANGE/PERF LOW B2 S1");
 	SetArrayString(pcArray, 0x1155, "O2 SENSOR RANGE/PERF HIGH B2 S1");
 	SetArrayString(pcArray, 0x1160, "ABNORMAL RETURN SPRING");
+	SetArrayString(pcArray, 0x1170, "FUEL SYSTEM ABNORMAL (PORT)");
+	SetArrayString(pcArray, 0x117B, "FUEL SYSTEM ABNORMAL (DI)");
+	SetArrayString(pcArray, 0x1235, "HIGH-PRESSURE FUEL PUMP ABNORMAL");
+	SetArrayString(pcArray, 0x1261, "DI INJECTOR CIRCUIT OPEN (CYLINDER 1)");
+	SetArrayString(pcArray, 0x1262, "DI INJECTOR CIRCUIT OPEN (CYLINDER 2)");
+	SetArrayString(pcArray, 0x1263, "DI INJECTOR CIRCUIT OPEN (CYLINDER 3)");
+	SetArrayString(pcArray, 0x1264, "DI INJECTOR CIRCUIT OPEN (CYLINDER 4)");
 	SetArrayString(pcArray, 0x1282, "PCV SYSTEM CIRCUIT (OPEN)");
 	SetArrayString(pcArray, 0x1301, "MISFIRE (HIGH TEMP EXHAUST GAS)");
 	SetArrayString(pcArray, 0x1312, "EGT SENSOR MALFUNCTION");
@@ -448,9 +540,14 @@ static CreatePcodeArray() {
 	SetArrayString(pcArray, 0x1518, "STARTER SWITCH LOW INPUT");
 	SetArrayString(pcArray, 0x1519, "IMRC STUCK CLOSED");
 	SetArrayString(pcArray, 0x1520, "IMRC CIRCUIT MALFUNCTION");
+	SetArrayString(pcArray, 0x1530, "BATTERY CURRENT SENSOR CIRCUIT (LOW)");
+	SetArrayString(pcArray, 0x1531, "BATTERY CURRENT SENSOR CIRCUIT (HIGH)");
+	SetArrayString(pcArray, 0x1532, "CHARGING CONTROL SYSTEM");
 	SetArrayString(pcArray, 0x1544, "EGT TOO HIGH");
 	SetArrayString(pcArray, 0x1560, "BACK-UP VOLTAGE MALFUNCTION");
 	SetArrayString(pcArray, 0x1602, "CONTROL MODULE PROGRAMMING ERROR");
+	SetArrayString(pcArray, 0x1603, "ENGINE STALL HISTORY");
+	SetArrayString(pcArray, 0x1604, "STARTABILITY MALFUNCTION");
 	SetArrayString(pcArray, 0x1616, "SBDS INTERACTIVE CODES");
 	SetArrayString(pcArray, 0x1700, "TPS CIRCUIT MALFUNCTION (AT)");
 	SetArrayString(pcArray, 0x2004, "TGV - INTAKE MANIFOLD RUNNER 1 STUCK OPEN");
@@ -481,12 +578,15 @@ static CreatePcodeArray() {
 	SetArrayString(pcArray, 0x2102, "THROTTLE ACTUATOR CIRCUIT LOW");
 	SetArrayString(pcArray, 0x2103, "THROTTLE ACTUATOR CIRCUIT HIGH");
 	SetArrayString(pcArray, 0x2109, "TPS A MINIMUM STOP PERF");
+	SetArrayString(pcArray, 0x2119, "THROTTLE CONTROL CIRCUIT RANGE/PERF PROBLEM");
 	SetArrayString(pcArray, 0x2122, "TPS D CIRCUIT LOW INPUT");
 	SetArrayString(pcArray, 0x2123, "TPS D CIRCUIT HIGH INPUT");
 	SetArrayString(pcArray, 0x2127, "TPS E CIRCUIT LOW INPUT");
 	SetArrayString(pcArray, 0x2128, "TPS E CIRCUIT HIGH INPUT");
 	SetArrayString(pcArray, 0x2135, "TPS A/B VOLTAGE");
 	SetArrayString(pcArray, 0x2138, "TPS D/E VOLTAGE");
+	SetArrayString(pcArray, 0x2195, "O2 SENSOR SIGNAL BIASED/STUCK LEAN BANK 1 SENSOR 1");
+	SetArrayString(pcArray, 0x2196, "O2 SENSOR SIGNAL BIASED/STUCK RICH BANK 1 SENSOR 1");
 	SetArrayString(pcArray, 0x219A, "BANK 1 AFR IMBALANCE");
 	SetArrayString(pcArray, 0x219B, "BANK 2 AFR IMBALANCE");
 	SetArrayString(pcArray, 0x2227, "BARO. PRESSURE CIRCUIT RANGE/PERF");
@@ -509,13 +609,24 @@ static CreatePcodeArray() {
 	SetArrayString(pcArray, 0x2504, "CHARGING SYSTEM VOLTAGE HIGH");
 	SetArrayString(pcArray, 0x2610, "ECM/PCM INTERNAL ENGINE OFF TIMER PERFORMANCE");
 	SetArrayString(pcArray, 0xC073, "CAN COMMUNICATION BUS A OFF");
+	SetArrayString(pcArray, 0xC100, "ENGINE DATA NOT RECEIVED");
 	SetArrayString(pcArray, 0xC101, "CAN LOST COMMUNICATION WITH TCM");
 	SetArrayString(pcArray, 0xC122, "CAN LOST COMMUNICATION WITH VDC");
+	SetArrayString(pcArray, 0xC126, "MISSING DATA FOR STEERING ANGLE SENSOR");
+	SetArrayString(pcArray, 0xC131, "LOST COMMUNICATION WITH EPS");
 	SetArrayString(pcArray, 0xC140, "CAN LOST COMMUNICATION WITH BIU");
+	SetArrayString(pcArray, 0xC151, "LOST COMMUNICATION WITH AIR BAG");
 	SetArrayString(pcArray, 0xC155, "LOST COMMUNICATION WITH INSTRUMENT PANEL CLUSTER (IPC) CONTROL MODULE");
+	SetArrayString(pcArray, 0xC164, "MISSING DATA FOR AIR CONDITIONER");
+	SetArrayString(pcArray, 0xC327, "MISSING DATA FOR SMART KEY COMPUTER ASSY");
+	SetArrayString(pcArray, 0xC401, "DATA ERROR FROM ENGINE");
 	SetArrayString(pcArray, 0xC402, "CAN INVALID DATA RECEIVED FROM TCM");
 	SetArrayString(pcArray, 0xC416, "CAN INVALID DATA RECEIVED FROM VDC");
 	SetArrayString(pcArray, 0xC422, "CAN INVALID DATA RECEIVED FROM BIU");
 	SetArrayString(pcArray, 0xC423, "INVALID DATA RECEIVED FROM INSTRUMENT PANEL CLUSTER CONTROL MODULE");
+	SetArrayString(pcArray, 0xC424, "DATA ERROR FROM AIR CONDITIONER");
+	SetArrayString(pcArray, 0xC427, "DATA ERROR FROM SMART KEY COMPUTER ASSY");
+	SetArrayString(pcArray, 0xC428, "DATA ERROR FROM STEERING ANGLE SENSOR");
+	SetArrayString(pcArray, 0xC452, "DATA ERROR FROM AIR BAG");
 	SetArrayString(pcArray, 0xFFFE, "PASS CODE (NO DTC DETECTED)");
 }
