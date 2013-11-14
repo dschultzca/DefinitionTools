@@ -32,7 +32,7 @@ CREATE TABLE `address` (
   `length` tinyint(4) NOT NULL,
   `bit` tinyint(4) DEFAULT NULL,
   PRIMARY KEY (`serial`)
-) ENGINE=MyISAM AUTO_INCREMENT=6029 DEFAULT CHARSET=utf8;
+) ENGINE=MyISAM AUTO_INCREMENT=6066 DEFAULT CHARSET=utf8;
 
 --
 -- Dumping data for table `address`
@@ -2243,7 +2243,7 @@ INSERT INTO `address` (`serial`,`address`,`length`,`bit`) VALUES
  (2201,'FF7820',4,NULL),
  (2202,'FF7834',4,NULL),
  (2203,'FF783C',4,NULL),
- (2204,'FF783C',4,NULL),
+ (6029,'x21843',1,NULL),
  (2205,'FF7840',4,NULL),
  (2206,'FF7848',4,NULL),
  (2207,'FF7849',1,NULL),
@@ -4717,7 +4717,7 @@ INSERT INTO `address` (`serial`,`address`,`length`,`bit`) VALUES
  (4674,'FF681A',2,NULL),
  (4675,'FF62D0',4,NULL),
  (4676,'FF6D40',2,NULL),
- (4677,'FF7834',4,NULL),
+ (6030,'x20BD0',2,NULL),
  (4678,'FF6D44',2,NULL),
  (4679,'FF7984',4,NULL),
  (4680,'FF2E8C',4,NULL),
@@ -6068,7 +6068,42 @@ INSERT INTO `address` (`serial`,`address`,`length`,`bit`) VALUES
  (6025,'FF7F05',1,NULL),
  (6026,'FF7F06',1,NULL),
  (6027,'FF7F07',1,NULL),
- (6028,'FF7F08',1,NULL);
+ (6028,'FF7F08',1,NULL),
+ (6031,'x20A3E',2,NULL),
+ (6032,'x21680',2,NULL),
+ (6033,'x2099C',2,NULL),
+ (6034,'x2096E',2,NULL),
+ (6035,'x20960',2,NULL),
+ (6036,'x20BEA',1,NULL),
+ (6037,'FF688A',2,NULL),
+ (6038,'FF688E',2,NULL),
+ (6039,'FF7887',1,NULL),
+ (6040,'FFB1D9',1,NULL),
+ (6041,'FF6886',2,NULL),
+ (6042,'FF7314',4,NULL),
+ (6043,'FF68B2',1,NULL),
+ (6044,'FF82A0',1,NULL),
+ (6045,'FF68B1',1,NULL),
+ (6046,'FF8978',1,NULL),
+ (6047,'FF8268',4,NULL),
+ (6048,'FF81B6',1,NULL),
+ (6049,'FF81B7',1,NULL),
+ (6050,'FF81B8',1,NULL),
+ (6051,'FF6224',4,NULL),
+ (6052,'FF6220',4,NULL),
+ (6053,'FF7994',4,NULL),
+ (6054,'FF68BB',1,NULL),
+ (6055,'FF8560',4,NULL),
+ (6056,'FF68A0',2,NULL),
+ (6057,'FF6873',2,NULL),
+ (6058,'FF62F8',4,NULL),
+ (6059,'000182',2,NULL),
+ (6060,'FF7EED',1,NULL),
+ (6061,'FF7EEF',1,NULL),
+ (6062,'FF7EF0',1,NULL),
+ (6063,'FFA3F9',1,NULL),
+ (6064,'FF865C',1,NULL),
+ (6065,'FF8D30',4,NULL);
 /*!40000 ALTER TABLE `address` ENABLE KEYS */;
 
 
@@ -6430,8 +6465,8 @@ INSERT INTO `cal_ecu` (`serial`,`ecuid`,`calid`,`model`,`inherit`) VALUES
 DROP TABLE IF EXISTS `conversion`;
 CREATE TABLE `conversion` (
   `serial` int(10) unsigned NOT NULL AUTO_INCREMENT,
-  `units` char(50) NOT NULL,
-  `expression` char(50) NOT NULL,
+  `units` char(64) NOT NULL,
+  `expression` char(64) NOT NULL,
   `format` char(10) DEFAULT NULL,
   `type` char(10) DEFAULT NULL,
   `min` decimal(17,8) DEFAULT NULL,
@@ -6442,7 +6477,7 @@ CREATE TABLE `conversion` (
   `order_metric` tinyint(3) unsigned DEFAULT NULL,
   `units_de` char(50) DEFAULT NULL,
   PRIMARY KEY (`serial`)
-) ENGINE=MyISAM AUTO_INCREMENT=303 DEFAULT CHARSET=utf8;
+) ENGINE=MyISAM AUTO_INCREMENT=320 DEFAULT CHARSET=utf8;
 
 --
 -- Dumping data for table `conversion`
@@ -6750,7 +6785,24 @@ INSERT INTO `conversion` (`serial`,`units`,`expression`,`format`,`type`,`min`,`m
  (299,'sec','(x-128)/200000','0.000000',NULL,'-0.00064000','0.00063000','0.00012000',3,3,3,NULL),
  (300,'raw ecu value','x','0.000','float',NULL,NULL,NULL,NULL,NULL,NULL,NULL),
  (301,'rpm','x*25-3200','0',NULL,'-100.00000000','300.00000000','25.00000000',NULL,NULL,NULL,NULL),
- (302,'degrees','0-x','0',NULL,'-5.00000000','0.00000000','1.00000000',NULL,NULL,NULL,NULL);
+ (302,'degrees','0-x','0',NULL,'-5.00000000','0.00000000','1.00000000',NULL,NULL,NULL,NULL),
+ (303,'rawdata','x','0',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+ (304,'VE','x','0.00','float',NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+ (305,'g/s','x','0.00','float',NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+ (306,'Multiplier','x','0.00','float',NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+ (307,'ratio','x','0.00','float',NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+ (308,'rawdata','x','0','uint32',NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+ (309,'gear','x','0','float',NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+ (310,'RPM','x','0.00','float',NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+ (311,'rawdata','x','0.00','float',NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+ (312,'lambda enrichment','x','0.00','float',NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+ (313,'lambda enrichment (additive)','x','0.00','float',NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+ (314,'fueling mode','x','0',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+ (315,'ratio','x+1','0.00','float',NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+ (316,'°','x','0.00','float','-10.00000000','10.00000000','2.00000000',NULL,NULL,NULL,NULL),
+ (317,'On/Off','x','0',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+ (318,'%','(P200*2*8.314472*([P11:C]+273.15))/([P7:kPa]*2.0*28.97)*100','0.00',NULL,'0.00000000','100.00000000','10.00000000',NULL,NULL,NULL,NULL),
+ (319,'%','(P200*2*8.314472*([P11:C]+273.15))/([P7:kPa]*2.5*28.97)*100','0.00',NULL,'0.00000000','100.00000000','10.00000000',NULL,NULL,NULL,NULL);
 /*!40000 ALTER TABLE `conversion` ENABLE KEYS */;
 
 
@@ -6767,7 +6819,7 @@ CREATE TABLE `conversion_rel` (
   PRIMARY KEY (`serial`),
   KEY `conversionid` (`conversionid`),
   KEY `ecuparamid` (`ecuparamid`)
-) ENGINE=MyISAM AUTO_INCREMENT=669 DEFAULT CHARSET=utf8;
+) ENGINE=MyISAM AUTO_INCREMENT=677 DEFAULT CHARSET=utf8;
 
 --
 -- Dumping data for table `conversion_rel`
@@ -7440,7 +7492,15 @@ INSERT INTO `conversion_rel` (`serial`,`parameterid`,`conversionid`,`ecuparamid`
  (665,NULL,300,172),
  (666,239,302,NULL),
  (667,240,301,NULL),
- (668,241,301,NULL);
+ (668,241,301,NULL),
+ (669,NULL,316,173),
+ (670,242,318,NULL),
+ (671,243,319,NULL),
+ (672,245,116,NULL),
+ (673,244,106,NULL),
+ (674,244,107,NULL),
+ (675,244,108,NULL),
+ (676,244,109,NULL);
 /*!40000 ALTER TABLE `conversion_rel` ENABLE KEYS */;
 
 
@@ -7453,7 +7513,7 @@ CREATE TABLE `depends` (
   `serial` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `parameters` char(50) NOT NULL,
   PRIMARY KEY (`serial`)
-) ENGINE=MyISAM AUTO_INCREMENT=9 DEFAULT CHARSET=utf8;
+) ENGINE=MyISAM AUTO_INCREMENT=10 DEFAULT CHARSET=utf8;
 
 --
 -- Dumping data for table `depends`
@@ -7468,7 +7528,8 @@ INSERT INTO `depends` (`serial`,`parameters`) VALUES
  (5,'156:31'),
  (6,'229:8'),
  (7,'160:230'),
- (8,'160:7');
+ (8,'160:7'),
+ (9,'200:11:7');
 /*!40000 ALTER TABLE `depends` ENABLE KEYS */;
 
 
@@ -8779,7 +8840,7 @@ CREATE TABLE `ecuid` (
   `dl_url` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`serial`),
   KEY `ecuid` (`ecuid`)
-) ENGINE=MyISAM AUTO_INCREMENT=465 DEFAULT CHARSET=utf8;
+) ENGINE=MyISAM AUTO_INCREMENT=468 DEFAULT CHARSET=utf8;
 
 --
 -- Dumping data for table `ecuid`
@@ -8869,12 +8930,12 @@ INSERT INTO `ecuid` (`serial`,`ecuid`,`calid`,`calid2`,`address`,`string`,`casei
  (80,'5212167307','EZ1D302D',NULL,'2004','EZ1D302D',NULL,'2009','USDM','Subaru','Legacy','2.5i','AT','SH7058','subarucan','1024kb','',0,0,1,NULL),
  (81,'5212525107','A2TB001C',NULL,'2000','A2TB001C',NULL,'2008','USDM','Subaru','Legacy(Outback)','GT(XT)','AT','SH7058','subarucan','1024kb','',0,0,1,'http://www.romraider.com/forum/download/file.php?id=6906'),
  (82,'5212785007','A2TB000L',NULL,'2000','A2TB000L',NULL,'2008','USDM','Subaru','Legacy','GT spec.B','MT','SH7058','subarucan','1024kb','',0,0,1,NULL),
- (83,'5212785107','A2TB001L',NULL,'2000','A2TB001L',NULL,'2008','USDM','Subaru','Legacy','GT spec.B','MT','SH7058','subarucan','1024kb','',0,0,1,'http://forums.openecu.org/download/file.php?id=1894'),
+ (83,'5212785107','A2TB001L',NULL,'2000','A2TB001L',NULL,'2008','USDM','Subaru','Legacy','GT spec.B','MT','SH7058','subarucan','1024kb','',0,0,1,'http://www.romraider.com/forum/download/file.php?id=14051'),
  (84,'5222167307','EZ1D302B',NULL,'2004','EZ1D302B',NULL,'2009','USDM','Subaru','Legacy','2.5i','AT','SH7058','subarucan','1024kb','',0,0,1,'http://www.romraider.com/forum/download/file.php?id=8010'),
  (85,'5312146007','E2TB011I',NULL,'2000','E2TB011I',NULL,'2008','USDM','Subaru','Forester','2.5','AT','SH7058','subarucan','1024kb','',0,0,1,'http://www.romraider.com/forum/download/file.php?id=8780'),
  (86,'6202154007','E2SB001K',NULL,'2000','E2SB001K',NULL,'2008','JDM','Subaru','Legacy','2.5i','AT','SH7058','subarucan','1024kb','',0,0,1,'http://www.romraider.com/forum/download/file.php?id=8049'),
  (87,'6202504007','A2SB000Y',NULL,'2000','A2SB000Y',NULL,'2008','JDM','Subaru','Outback','XT','AT','SH7058','subarucan','1024kb','',0,0,1,'http://www.romraider.com/forum/download/file.php?id=6210'),
- (88,'6204504007','A2SB000A',NULL,'2000','A2SB000A',NULL,'2008','JDM','Subaru','Legacy','GT','AT','SH7058','subarucan','1024kb','',0,0,1,'http://www.romraider.com/forum/download/file.php?id=6834'),
+ (88,'6204504007','A2SB000A',NULL,'2000','A2SB000A',NULL,'2008','JDM','Subaru','Legacy','GT spec.B','AT','SH7058','subarucan','1024kb','',0,0,1,'http://www.romraider.com/forum/download/file.php?id=6834'),
  (89,'6304504007','AZ1H101W',NULL,'2004','AZ1H101W',NULL,'2008','JDM','Subaru','Impreza','SGT','AT','SH7058','subarucan','1024kb','',0,0,1,NULL),
  (90,'6304504107','AZ1H102W',NULL,'2004','AZ1H102W',NULL,'2008','JDM','Subaru','Exiga','2.0GT','AT','SH7058','subarucan','1024kb','',0,0,1,'http://www.romraider.com/forum/download/file.php?id=6705'),
  (91,'6612784007','AZ1G401V',NULL,'2004','AZ1G401V',NULL,'2009','USDM','Subaru','Impreza','WRX','MT','SH7058','subarucan','1024kb','',0,0,1,'http://www.romraider.com/forum/download/file.php?id=10520'),
@@ -8885,7 +8946,7 @@ INSERT INTO `ecuid` (`serial`,`ecuid`,`calid`,`calid2`,`address`,`string`,`casei
  (96,'6912783007','AZ1G202I',NULL,'2004','AZ1G202I',NULL,'2008/09','USDM','Subaru','Impreza','STI','MT','SH7058','subarucan','1024kb','',0,0,1,'http://www.romraider.com/forum/download/file.php?id=5938'),
  (97,'7212786007','AZ1G701I',NULL,'2004','AZ1G701I',NULL,'2010','USDM','Subaru','Impreza','STI','MT','SH7058','subarucan','1024kb','',0,0,1,'http://forums.openecu.org/download/file.php?id=2485'),
  (98,'7212786107','AZ1G702I',NULL,'2004','AZ1G702I',NULL,'2010','USDM','Subaru','Impreza','STi SE','MT','SH7058','subarucan','1024kb','',0,0,1,'http://forums.openecu.org/download/file.php?id=2595'),
- (99,'1B04400405','A4SD501A',NULL,'200','A4SD501A',NULL,'2001/02','JDM','Subaru','Impreza','WRX','MT/AT','68HC16Y5','wrx02','192kb','',0,0,1,NULL),
+ (99,'1B04400405','A4SD501A',NULL,'200','A4SD501A',NULL,'2001/02','JDM','Subaru','Impreza','WRX','MT/AT','68HC16Y5','wrx02','192kb','',0,0,1,'http://www.romraider.com/forum/download/file.php?id=19577'),
  (100,'1B04400505','A4SD800A',NULL,'200','A4SD800A',NULL,'2001/02','JDM','Subaru','Impreza','WRX','MT/AT','68HC16Y5','wrx02','192kb','',0,0,1,'http://forums.openecu.org/download/file.php?id=517'),
  (101,'1B04400605','A4SD900A',NULL,'200','A4SD900A',NULL,'2001/02','JDM','Subaru','Impreza','WRX','MT/AT','68HC16Y5','wrx02','192kb','',0,0,1,'http://www.romraider.com/forum/download/file.php?id=13235'),
  (102,'1B04490305','A4SD600B',NULL,'200','A4SD600B',NULL,'2001/02','JDM','Subaru','Impreza','STi','MT/AT','68HC16Y5','wrx02','192kb','',0,0,1,NULL),
@@ -8972,7 +9033,7 @@ INSERT INTO `ecuid` (`serial`,`ecuid`,`calid`,`calid2`,`address`,`string`,`casei
  (183,'3B02594006','A2WC000E',NULL,'2000','A2WC000E',NULL,'2004','JDM','Subaru','Forester','STi','MT','SH7055','sti04','512kb','',0,0,1,'http://forums.openecu.org/download/file.php?id=1572'),
  (184,'3B02594216','A2WC011E',NULL,'2000','A2WC011E',NULL,'2004-07','JDM','Subaru','Forester','STi','MT','SH7055','sti04','512kb','',0,0,1,'http://forums.openecu.org/download/file.php?id=2216'),
  (185,'3B02594316','A2WC012E',NULL,'2000','A2WC012E',NULL,'2004-07','JDM','Subaru','Forester','STi','MT','SH7055','sti04','512kb','',0,0,1,'http://forums.openecu.org/download/file.php?id=1047'),
- (186,'3B02594416','A2WC013E',NULL,'2000','A2WC013E',NULL,'2004-07','JDM','Subaru','Forester','STi','MT','SH7055','sti04','512kb','',0,0,1,NULL),
+ (186,'3B02594416','A2WC013E',NULL,'2000','A2WC013E',NULL,'2004-07','JDM','Subaru','Forester','STi','MT','SH7055','sti04','512kb','',0,0,1,'http://www.romraider.com/forum/download/file.php?id=20608'),
  (187,'3B04484105','A4RI401I',NULL,'200','A4RI401I',NULL,'2001/02','JDM','Subaru','Forester','Turbo','MT/AT','68HC16Y5','wrx02','192kb','',0,0,1,'http://forums.openecu.org/download/file.php?id=1566'),
  (188,'3B12044206','E2ZJ121H',NULL,'2000','E2ZJ121H',NULL,'2005','USDM','Subaru','Forester','2.5','MT/AT','SH7058','sti05','1024kb','',0,0,1,NULL),
  (189,'3B12504006','A2WC400D',NULL,'2000','A2WC400D',NULL,'2005','USDM','Subaru','Forester','XT','AT','SH7058','sti05','1024kb','',0,0,1,'http://forums.openecu.org/download/file.php?id=1529'),
@@ -9070,7 +9131,7 @@ INSERT INTO `ecuid` (`serial`,`ecuid`,`calid`,`calid2`,`address`,`string`,`casei
  (281,'4D12584006','A8DK100X',NULL,'2000','A8DK100X',NULL,'2007','USDM','Subaru','Impreza','WRX','MT','SH7058','sti05','1024kb','',0,0,1,'http://forums.openecu.org/download/file.php?id=933'),
  (282,'4D12584106','A8DK101X',NULL,'2000','A8DK101X',NULL,'2007','USDM','Subaru','Impreza','WRX','MT','SH7058','sti05','1024kb','',0,0,1,'http://www.romraider.com/forum/download/file.php?id=10811'),
  (283,'4D12784006','A2UG000J',NULL,'2000','A2UG000J',NULL,'2007','USDM','Subaru','Impreza','STI','MT','SH7058','sti05','1024kb','',0,0,1,'http://www.romraider.com/forum/download/file.php?id=2093'),
- (284,'4D12784206','A2UJ000J',NULL,'2000','A2UJ000J',NULL,'2007','USDM','Subaru','Impreza','STI','MT','SH7058','sti05','1024kb','',0,0,1,'http://forums.openecu.org/download/file.php?id=1888'),
+ (284,'4D12784206','A2UJ000J',NULL,'2000','A2UJ000J',NULL,'2007','USDM','Subaru','Impreza','STI','MT','SH7058','sti05','1024kb','',0,0,1,'http://www.romraider.com/forum/download/file.php?id=19489'),
  (285,'4D42584006','A8DK100Y',NULL,'2000','A8DK100Y',NULL,'2007','EDM','Subaru','Impreza','WRX','MT','SH7058','sti05','1024kb','',0,0,1,'http://forums.openecu.org/download/file.php?id=1173'),
  (286,'4D42594006','A8DK100Z',NULL,'2000','A8DK100Z',NULL,'2007','EDM','Subaru','Impreza','STI','MT','SH7058','sti05','1024kb','',0,0,1,'http://www.romraider.com/forum/download/file.php?id=1943'),
  (287,'4D425A6006','A8DK100K',NULL,'2000','A8DK100K',NULL,'2007','EDM','Subaru','Impreza','WRX','MT','SH7058','sti05','1024kb','',0,0,1,NULL),
@@ -9108,7 +9169,7 @@ INSERT INTO `ecuid` (`serial`,`ecuid`,`calid`,`calid2`,`address`,`string`,`casei
  (319,'5B525A4107','AE5F301D',NULL,'2004','AE5F301D',NULL,'2010','ADM','Subaru','Liberty','GT','MT','SH7058','subarucan','1024kb','',0,0,1,NULL),
  (320,'5C04505207','AZ1G105L',NULL,'2004','AZ1G105L',NULL,'2009','JDM','Subaru','Forester','XT','AT','SH7058','subarucan','1024kb','',0,0,1,'http://www.romraider.com/forum/download/file.php?id=7119'),
  (321,'5C12187007','EZ1G109K',NULL,'2004','EZ1G109K',NULL,'2009','USDM','Subaru','Forester','2.5','MT','SH7058','subarucan','1024kb','',0,0,1,'http://www.romraider.com/forum/download/file.php?id=8086'),
- (322,'5C12504007','AZ1G101R',NULL,'2004','AZ1G101R',NULL,'2009','USDM','Subaru','Forester','XT','AT','SH7058','subarucan','1024kb','',0,0,1,NULL),
+ (322,'5C12504007','AZ1G101R',NULL,'2004','AZ1G101R',NULL,'2009','USDM','Subaru','Forester','XT','AT','SH7058','subarucan','1024kb','',0,0,1,'http://www.romraider.com/forum/download/file.php?id=20735'),
  (323,'5C42504007','AZ1G101N',NULL,'2004','AZ1G101N',NULL,'2009/10','EDM','Subaru','Forester','XT','AT','SH7058','subarucan','1024kb','',0,0,1,'http://forums.openecu.org/download/file.php?id=1931'),
  (324,'5C42584007','AZ1G101M',NULL,'2004','AZ1G101M',NULL,'2009/10','EDM','Subaru','Forester','XT','MT','SH7058','subarucan','1024kb','',0,0,1,'http://www.romraider.com/forum/download/file.php?id=8676'),
  (325,'5C52184007','EZ1G107M',NULL,'2004','EZ1G107M',NULL,'2009','ADM','Subaru','Forester','2.5','MT','SH7058','subarucan','1024kb','',0,0,1,'http://www.romraider.com/forum/download/file.php?id=5734'),
@@ -9122,9 +9183,9 @@ INSERT INTO `ecuid` (`serial`,`ecuid`,`calid`,`calid2`,`address`,`string`,`casei
  (333,'4512147106','E2VG221B',NULL,'2000','E2VG221B',NULL,'2006','USDM','Subaru','Legacy','2.5i','MT/AT','SH7058','sti05','1024kb','',0,0,1,'http://www.romraider.com/forum/download/file.php?id=11923'),
  (334,'4B12187007','E2UE102B',NULL,'2000','E2UE102B',NULL,'2007','USDM','Subaru','Outback','2.5i','MT','SH7058','subarucan','1024kb','',0,0,1,'http://www.romraider.com/forum/download/file.php?id=19470'),
  (335,'5B42564107','AE5F301C',NULL,'2004','AE5F301C',NULL,'2010','EDM','Subaru','Legacy','GT','AT','SH7058','subarucan','1024kb','',0,0,1,'http://forums.openecu.org/download/file.php?id=2491'),
- (336,'6E12786007','AZ1G701V',NULL,'2004','AZ1G701V',NULL,'2010','USDM','Subaru','Impreza','WRX','MT','SH7058','subarucan','1024kb','',0,0,1,'http://forums.openecu.org/download/file.php?id=2461'),
- (337,'52221A7207','EZ1D301A',NULL,'2004','EZ1D301A',NULL,'2008','USDM','Subaru','Legacy','2.5 PZEV','MT','SH7058','subarucan','1024kb','',0,0,1,'http://forums.openecu.org/download/file.php?id=2626');
+ (336,'6E12786007','AZ1G701V',NULL,'2004','AZ1G701V',NULL,'2010','USDM','Subaru','Impreza','WRX','MT','SH7058','subarucan','1024kb','',0,0,1,'http://forums.openecu.org/download/file.php?id=2461');
 INSERT INTO `ecuid` (`serial`,`ecuid`,`calid`,`calid2`,`address`,`string`,`caseid`,`year`,`market`,`make`,`model`,`submodel`,`transmission`,`memmodel`,`flash`,`filesize`,`checksum`,`obsolete`,`inherit`,`car_profile`,`dl_url`) VALUES 
+ (337,'52221A7207','EZ1D301A',NULL,'2004','EZ1D301A',NULL,'2008','USDM','Subaru','Legacy','2.5 PZEV','MT','SH7058','subarucan','1024kb','',0,0,1,'http://forums.openecu.org/download/file.php?id=2626'),
  (338,'4512184106','E2VG204B',NULL,'2000','E2VG204B',NULL,'2006','USDM','Subaru','Legacy','2.5i','MT/AT','SH7058','sti05','1024kb','',0,0,1,'http://www.romraider.com/forum/download/file.php?id=13032'),
  (339,'7412597007','AE5I910V',NULL,'2004','AE5I910V',NULL,'2011','USDM','Subaru','Impreza','STI','MT','SH7058','subarucan','1024kb','',0,0,1,'http://www.romraider.com/forum/download/file.php?id=14917'),
  (340,'3F12484006','A2WC400L',NULL,'2000','A2WC400L',NULL,'2005','USDM','Subaru','Baja','Turbo','MT','SH7058','sti05','1024kb','',0,0,1,'http://www.romraider.com/forum/download/file.php?id=9900'),
@@ -9238,7 +9299,7 @@ INSERT INTO `ecuid` (`serial`,`ecuid`,`calid`,`calid2`,`address`,`string`,`casei
  (448,'7472744007','AZ1J400H',NULL,'2004','AZ1J400H',NULL,'2011','EDM','Subaru','Impreza','STI','AT','SH7058','subarucan','1024kb',NULL,0,NULL,1,'http://www.romraider.com/forum/download/file.php?id=15657'),
  (449,'2F220A4006','E2ZI103A',NULL,'2000','E2ZI103A',NULL,'2005','USDM','Subaru','Outback','2.5i','MT','SH7058','sti05','1024kb',NULL,0,NULL,1,'http://www.romraider.com/forum/download/file.php?id=20152'),
  (450,'9911D87607',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1,NULL),
- (451,'6644D87507',NULL,NULL,'400C',NULL,NULL,'2011','EDM','Subaru','Impreza','2.0T Diesel','MT','SH7058','subarucan','1024kb',NULL,NULL,NULL,1,NULL),
+ (451,'6644D87507','JZ2F430A',NULL,'400C','JZ2F430A',NULL,'2011','EDM','Subaru','Impreza','2.0T Diesel','MT','SH7058','subarucan','1024kb',NULL,NULL,NULL,1,'http://www.romraider.com/forum/download/file.php?id=20561'),
  (452,'2F1A355006','D2ZX004B',NULL,'2000','D2ZX004B',NULL,'2005','USDM','Subaru','Outback','3.0R','AT','SH7058','sti05','1024kb',NULL,0,NULL,1,'http://www.romraider.com/forum/download/file.php?id=16822'),
  (453,'764B344007','DE5I500M',NULL,'2004','DE5I500M',NULL,'2012','EDM','Subaru','Tribeca','3.6R','AT','SH7058','subarucan','1024kb',NULL,0,NULL,1,'http://www.romraider.com/forum/download/file.php?id=18696'),
  (454,'8A12587007','AE5L600L',NULL,'2004','AE5L600L',NULL,'2013','USDM','Subaru','Impreza','WRX','MT','SH7058','subarucan','1024kb',NULL,0,NULL,1,'http://www.romraider.com/forum/download/file.php?id=20196'),
@@ -9251,7 +9312,10 @@ INSERT INTO `ecuid` (`serial`,`ecuid`,`calid`,`calid2`,`address`,`string`,`casei
  (461,'7522167207','EE5IA11T',NULL,'2004','EE5IA11T',NULL,'2011','USDM','Subaru','Outback','2.5i','CVT','SH7058','subarucan','1024kb',NULL,0,NULL,1,'http://www.romraider.com/forum/download/file.php?id=20271'),
  (462,'8F12583007','AE5Q100L',NULL,'2004','AE5Q100L',NULL,'2014','USDM','Subaru','Impreza','WRX','MT','SH7058','subarucan','1024kb',NULL,0,NULL,1,'http://www.romraider.com/forum/download/file.php?id=20366'),
  (463,'4B12147007','E2UE101B',NULL,'2000','E2UE101B',NULL,'2007','USDM','Subaru','Legacy','2.5i','AT','SH7058','subarucan','1024kb',NULL,0,NULL,1,'http://www.romraider.com/forum/download/file.php?id=20380'),
- (464,'4B4A346107','D2UH003R',NULL,'2000','D2UH003R',NULL,'2007','EDM','Subaru','Legacy','3.0R','AT','SH7058','subarucan','1024kb',NULL,0,NULL,1,'http://www.romraider.com/forum/download/file.php?id=15041');
+ (464,'4B4A346107','D2UH003R',NULL,'2000','D2UH003R',NULL,'2007','EDM','Subaru','Legacy','3.0R','AT','SH7058','subarucan','1024kb',NULL,0,NULL,1,'http://www.romraider.com/forum/download/file.php?id=15041'),
+ (465,'181A250205','D6JM000B',NULL,'200','D6JM000B','22611AE98D','2001','USDM','Subaru','Outback','3.0R VDC','AT','68HC16Y5','wrx02','192kb',NULL,0,NULL,1,'http://www.romraider.com/forum/download/file.php?id=13163'),
+ (466,'8F12783007','AE5Q100V',NULL,'2004','AE5Q100V',NULL,'2014','USDM','Subaru','Impreza','STI','MT','SH7058','subarucan','1024kb',NULL,0,NULL,1,'http://www.romraider.com/forum/download/file.php?id=20427'),
+ (467,'6E12787007','AZ1G710V',NULL,'2004','AZ1G710V',NULL,'2010','USDM','Subaru','Impreza','WRX','MT','SH7058','subarucan','1024kb',NULL,0,NULL,1,'http://www.romraider.com/forum/download/file.php?id=19757');
 /*!40000 ALTER TABLE `ecuid` ENABLE KEYS */;
 
 
@@ -9299,7 +9363,7 @@ CREATE TABLE `ecuparam` (
   `name_de` char(60) NOT NULL,
   `desc_de` varchar(1024) DEFAULT NULL,
   PRIMARY KEY (`serial`)
-) ENGINE=MyISAM AUTO_INCREMENT=173 DEFAULT CHARSET=utf8;
+) ENGINE=MyISAM AUTO_INCREMENT=174 DEFAULT CHARSET=utf8;
 
 --
 -- Dumping data for table `ecuparam`
@@ -9478,7 +9542,8 @@ INSERT INTO `ecuparam` (`serial`,`id`,`reserved`,`name`,`length`,`desc`,`target`
  (169,169,0,'Hot Restart Initial Target Final (4-byte)*',4,'Fuel enrichment',1,'Hot Restart ursprüngliche Ziel Finale (4-byte)*','Kraftstoffanreicherung'),
  (170,170,0,'Warm Up Enrichment (4-byte)*',4,'Fuel enrichment',1,'Warm Up Enrichment (4-byte)*','Kraftstoffanreicherung'),
  (171,171,0,'Post-Start Low Speed Enrichment (4-byte)*',4,'Fuel enrichment',1,'Post-Start Low Speed Enrichment (4-byte)*','Kraftstoffanreicherung'),
- (172,172,0,'Post-Start High Speed Enrichment (4-byte)*',4,'Fuel enrichment',1,'Post-Start High Speed Enrichment (4-byte)*','Kraftstoffanreicherung');
+ (172,172,0,'Post-Start High Speed Enrichment (4-byte)*',4,'Fuel enrichment',1,'Post-Start High Speed Enrichment (4-byte)*','Kraftstoffanreicherung'),
+ (173,173,1,'FLKC Table Start (4-byte)*',4,'The RAM address of the start of the FLKC table used by Learning Table Values tool',1,'FLKC Table Start (4-byte)*',NULL);
 /*!40000 ALTER TABLE `ecuparam` ENABLE KEYS */;
 
 
@@ -9496,7 +9561,7 @@ CREATE TABLE `ecuparam_rel` (
   KEY `ecuparamid` (`ecuparamid`),
   KEY `ecuidid` (`ecuidid`),
   KEY `addressid` (`addressid`)
-) ENGINE=MyISAM AUTO_INCREMENT=22097 DEFAULT CHARSET=utf8;
+) ENGINE=MyISAM AUTO_INCREMENT=22231 DEFAULT CHARSET=utf8;
 
 --
 -- Dumping data for table `ecuparam_rel`
@@ -14060,9 +14125,9 @@ INSERT INTO `ecuparam_rel` (`serial`,`ecuparamid`,`ecuidid`,`addressid`) VALUES
  (4553,40,250,2659),
  (4554,40,31,2494),
  (4555,40,32,2494),
- (4556,40,33,2204),
- (4557,40,34,2204),
- (4558,40,35,2204),
+ (4556,40,33,2203),
+ (4557,40,34,2203),
+ (4558,40,35,2203),
  (4559,40,36,2091),
  (4560,40,37,2091),
  (4561,40,39,2089),
@@ -15744,9 +15809,9 @@ INSERT INTO `ecuparam_rel` (`serial`,`ecuparamid`,`ecuidid`,`addressid`) VALUES
  (6237,48,274,2078),
  (6238,48,275,2133),
  (6239,48,276,2276),
- (6240,48,277,2204),
- (6241,48,278,2204),
- (6242,48,279,2204),
+ (6240,48,277,2203),
+ (6241,48,278,2203),
+ (6242,48,279,2203),
  (6243,48,280,1959),
  (6244,48,281,1959),
  (6245,48,282,1959),
@@ -18614,7 +18679,7 @@ INSERT INTO `ecuparam_rel` (`serial`,`ecuparamid`,`ecuidid`,`addressid`) VALUES
  (9106,60,91,2320),
  (9107,60,92,2202),
  (9108,60,93,3801),
- (9109,60,327,2204),
+ (9109,60,327,2203),
  (9110,60,328,2484),
  (9111,60,94,2213),
  (9112,60,95,2071),
@@ -20999,7 +21064,7 @@ INSERT INTO `ecuparam_rel` (`serial`,`ecuparamid`,`ecuidid`,`addressid`) VALUES
  (11490,84,272,2124),
  (11491,84,273,2124),
  (11492,84,274,2124),
- (11493,84,275,2204),
+ (11493,84,275,2203),
  (11494,84,276,2322),
  (11495,84,277,2251),
  (11496,84,278,2251),
@@ -26984,7 +27049,7 @@ INSERT INTO `ecuparam_rel` (`serial`,`ecuparamid`,`ecuidid`,`addressid`) VALUES
  (17478,34,376,882),
  (17479,37,376,881),
  (17480,82,377,4676),
- (17481,81,377,4677),
+ (17481,81,377,2202),
  (17482,83,377,4678),
  (17483,48,377,4679),
  (17484,44,377,4680),
@@ -27243,7 +27308,7 @@ INSERT INTO `ecuparam_rel` (`serial`,`ecuparamid`,`ecuidid`,`addressid`) VALUES
  (17737,51,381,1121),
  (17738,52,381,1121),
  (17739,85,381,1657),
- (17740,84,381,2204),
+ (17740,84,381,2203),
  (17741,56,381,4785),
  (17742,57,381,2626),
  (17743,38,381,1156),
@@ -30252,7 +30317,7 @@ INSERT INTO `ecuparam_rel` (`serial`,`ecuparamid`,`ecuidid`,`addressid`) VALUES
  (20851,61,348,4241),
  (20852,92,348,4242),
  (20853,91,348,4243),
- (20854,33,348,5751),
+ (20854,33,348,4244),
  (20855,122,348,4245),
  (20856,121,348,1975),
  (20857,86,348,1301),
@@ -31495,7 +31560,141 @@ INSERT INTO `ecuparam_rel` (`serial`,`ecuparamid`,`ecuidid`,`addressid`) VALUES
  (22093,165,336,6025),
  (22094,166,336,6026),
  (22095,167,336,6027),
- (22096,168,336,6028);
+ (22096,168,336,6028),
+ (22097,23,465,6029),
+ (22098,24,465,6030),
+ (22099,19,465,6031),
+ (22100,28,465,6032),
+ (22101,17,465,6033),
+ (22102,30,465,6034),
+ (22103,76,465,6035),
+ (22104,22,465,6036),
+ (22105,82,466,6037),
+ (22106,81,466,2141),
+ (22107,83,466,6038),
+ (22108,48,466,2222),
+ (22109,44,466,505),
+ (22110,45,466,506),
+ (22111,46,466,507),
+ (22112,47,466,508),
+ (22113,61,466,6039),
+ (22114,92,466,4282),
+ (22115,91,466,987),
+ (22116,35,466,3768),
+ (22117,33,466,6040),
+ (22118,122,466,4392),
+ (22119,121,466,2185),
+ (22120,86,466,4958),
+ (22121,32,466,937),
+ (22122,157,466,5890),
+ (22123,94,466,4968),
+ (22124,39,466,2682),
+ (22125,124,466,6041),
+ (22126,123,466,6042),
+ (22127,95,466,6043),
+ (22128,41,466,2711),
+ (22129,58,466,6044),
+ (22130,50,466,1979),
+ (22131,99,466,4945),
+ (22132,60,466,2460),
+ (22133,59,466,1108),
+ (22134,96,466,6045),
+ (22135,31,466,4959),
+ (22136,49,466,6046),
+ (22137,53,466,2532),
+ (22138,43,466,2681),
+ (22139,40,466,6047),
+ (22140,118,466,2701),
+ (22141,165,466,2663),
+ (22142,166,466,6048),
+ (22143,167,466,6049),
+ (22144,168,466,6050),
+ (22145,113,466,6051),
+ (22146,88,466,4266),
+ (22147,89,466,4266),
+ (22148,51,466,6052),
+ (22149,52,466,6052),
+ (22150,42,466,5973),
+ (22151,85,466,4970),
+ (22152,84,466,6053),
+ (22153,112,466,6054),
+ (22154,77,466,4747),
+ (22155,56,466,6055),
+ (22156,90,466,6056),
+ (22157,36,466,4398),
+ (22158,120,466,4393),
+ (22159,57,466,5974),
+ (22160,93,466,6057),
+ (22161,38,466,4206),
+ (22162,55,466,2379),
+ (22163,54,466,6058),
+ (22164,34,466,4750),
+ (22165,37,466,4397),
+ (22166,165,98,6060),
+ (22167,166,98,5190),
+ (22168,167,98,6061),
+ (22169,168,98,6062),
+ (22170,82,467,3692),
+ (22171,81,467,2036),
+ (22172,83,467,3693),
+ (22173,48,467,3694),
+ (22174,44,467,3695),
+ (22175,45,467,3696),
+ (22176,46,467,3697),
+ (22177,47,467,3698),
+ (22178,61,467,3699),
+ (22179,92,467,1231),
+ (22180,91,467,1042),
+ (22181,35,467,862),
+ (22182,33,467,6063),
+ (22183,122,467,3701),
+ (22184,121,467,3702),
+ (22185,86,467,3797),
+ (22186,32,467,998),
+ (22187,157,467,4777),
+ (22188,94,467,3798),
+ (22189,39,467,2546),
+ (22190,124,467,3705),
+ (22191,123,467,3706),
+ (22192,95,467,3713),
+ (22193,41,467,2584),
+ (22194,58,467,3708),
+ (22195,50,467,3709),
+ (22196,99,467,3710),
+ (22197,60,467,3711),
+ (22198,59,467,4551),
+ (22199,96,467,3799),
+ (22200,31,467,3714),
+ (22201,49,467,6064),
+ (22202,53,467,3716),
+ (22203,43,467,3717),
+ (22204,40,467,2570),
+ (22205,118,467,2568),
+ (22206,165,467,6025),
+ (22207,166,467,6026),
+ (22208,167,467,6027),
+ (22209,168,467,6028),
+ (22210,113,467,930),
+ (22211,88,467,1226),
+ (22212,89,467,1226),
+ (22213,51,467,929),
+ (22214,52,467,929),
+ (22215,42,467,6065),
+ (22216,85,467,1245),
+ (22217,84,467,3718),
+ (22218,112,467,3800),
+ (22219,77,467,868),
+ (22220,56,467,3720),
+ (22221,90,467,1256),
+ (22222,36,467,864),
+ (22223,120,467,863),
+ (22224,57,467,3721),
+ (22225,93,467,1228),
+ (22226,38,467,4515),
+ (22227,55,467,3723),
+ (22228,54,467,3724),
+ (22229,34,467,866),
+ (22230,37,467,865);
 /*!40000 ALTER TABLE `ecuparam_rel` ENABLE KEYS */;
 
 
@@ -31516,7 +31715,7 @@ CREATE TABLE `parameter` (
   `name_de` char(100) NOT NULL,
   `desc_de` varchar(256) DEFAULT NULL,
   PRIMARY KEY (`serial`)
-) ENGINE=MyISAM AUTO_INCREMENT=242 DEFAULT CHARSET=utf8;
+) ENGINE=MyISAM AUTO_INCREMENT=246 DEFAULT CHARSET=utf8;
 
 --
 -- Dumping data for table `parameter`
@@ -31548,7 +31747,7 @@ INSERT INTO `parameter` (`serial`,`id`,`reserved`,`name`,`desc`,`byteidx`,`bitid
  (22,'22',0,'Fuel Injector #2 Pulse Width','This parameter includes injector latency.',10,2,1,'Einspritzdauer Injektor #2 (Plusweite)','Dieser Parameter enthält Injektor Latenz.'),
  (23,'23',0,'Knock Correction Advance','Retard amount when knocking has occurred. Partial learned value of the learned ignition timing.',10,1,1,'korrektur Klopfen','Retard amount when knocking has occurred. Partial learned value of the learned ignition timing.'),
  (24,'24',0,'Atmospheric Pressure','',10,0,1,'Umgebungsdruck',''),
- (25,'25',0,'Manifold Relative Pressure','',11,7,1,'Saugrohr Druck (LD relativ)','Ladedruck relative bei Turbomotoren'),
+ (25,'25',0,'Manifold Relative Pressure','Manifold Absolute Pressure [P7] minus current Atmospheric Pressure [P24].',11,7,1,'Saugrohr Druck (LD relativ)','Ladedruck relative bei Turbomotoren'),
  (26,'26',0,'Pressure Differential Sensor','',11,6,1,'Differenzdruck Sensor',''),
  (27,'27',0,'Fuel Tank Pressure','',11,5,1,'Kraftstofftank Innendruck',''),
  (28,'28',0,'CO Adjustment','',11,4,1,'CO Korrektur',''),
@@ -31764,7 +31963,11 @@ INSERT INTO `parameter` (`serial`,`id`,`reserved`,`name`,`desc`,`byteidx`,`bitid
  (238,'238',0,'Final Initial Torque','Final initial torque including all limiters',60,6,1,'Init. Motormoment entgül','Initiertes Momentermoment nach allen Brenzungen'),
  (239,'239',0,'Global Timing User Adjustment Value','This is the fixed amount of timing removed globally - set by the user',8,0,1,'Global Timing User Adjustment Value',NULL),
  (240,'240',0,'Engine Idle Speed User Adjustment (A/C off)','This is the fixed amount of idle speed adjustmnet while the A/C is off - set by the user',8,0,1,'Engine Idle Speed User Adjustment AC off',NULL),
- (241,'241',0,'Engine Idle Speed User Adjustment (A/C on)','This is the fixed amount of idle speed adjustmnet while the A/C is on - set by the user',8,0,1,'Engine Idle Speed User Adjustment AC on',NULL);
+ (241,'241',0,'Engine Idle Speed User Adjustment (A/C on)','This is the fixed amount of idle speed adjustmnet while the A/C is on - set by the user',8,0,1,'Engine Idle Speed User Adjustment AC on',NULL),
+ (242,'242',0,'Volumetric Efficiency 2.0L (Calculated)','VE calculated from IGL, MMA, MAF, IAT, absolute manifold pressure, assuming engine displacement of 122.04 CID (EJ207)',NULL,NULL,1,'Volumetrischen Wirkungsgrad 2.0L (berechnet)','VE von IGL, MMA, MAF, IAT, Krümmerunterdrucksignal berechnet, wobei Hubraum von 122.04 CID (EJ207)'),
+ (243,'243',0,'Volumetric Efficiency 2.5L (Calculated)','VE calculated from IGL, MMA, MAF, IAT, absolute manifold pressure, assuming engine displacement of 149.9 CID (EJ257)',NULL,NULL,1,'Volumetrischen Wirkungsgrad 2.5L (berechnet)','VE von IGL, MMA, MAF, IAT, Krümmerunterdrucksignal berechnet, wobei Hubraum von 149.9 CID (EJ257)'),
+ (244,'244',0,'Secondary Air Piping Pressure','',41,7,1,'Secondary Air Pressure Piping',''),
+ (245,'245',0,'Secondary Air Flow','',41,6,1,'Secondary Air Flow','');
 /*!40000 ALTER TABLE `parameter` ENABLE KEYS */;
 
 
@@ -31781,7 +31984,7 @@ CREATE TABLE `parameter_rel` (
   PRIMARY KEY (`serial`),
   KEY `param_idx` (`parameterid`),
   KEY `addr_idx` (`addressid`)
-) ENGINE=MyISAM AUTO_INCREMENT=242 DEFAULT CHARSET=utf8;
+) ENGINE=MyISAM AUTO_INCREMENT=246 DEFAULT CHARSET=utf8;
 
 --
 -- Dumping data for table `parameter_rel`
@@ -32029,7 +32232,11 @@ INSERT INTO `parameter_rel` (`serial`,`parameterid`,`addressid`,`dependsid`) VAL
  (238,238,4498,NULL),
  (239,239,5310,NULL),
  (240,240,5311,NULL),
- (241,241,5312,NULL);
+ (241,241,5312,NULL),
+ (242,242,NULL,9),
+ (243,243,NULL,9),
+ (244,244,3913,NULL),
+ (245,245,6059,NULL);
 /*!40000 ALTER TABLE `parameter_rel` ENABLE KEYS */;
 
 
@@ -33254,7 +33461,7 @@ CREATE TABLE `version` (
   `version` varchar(45) NOT NULL,
   `update` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=MyISAM AUTO_INCREMENT=194 DEFAULT CHARSET=utf8;
+) ENGINE=MyISAM AUTO_INCREMENT=199 DEFAULT CHARSET=utf8;
 
 --
 -- Dumping data for table `version`
@@ -33454,7 +33661,12 @@ INSERT INTO `version` (`id`,`version`,`update`) VALUES
  (190,'20130921_184252','Added ECU ID: 8F12583007 to extended parameters'),
  (191,'20130921_184829','Added ECU ID: 4B12147007 to extended parameters'),
  (192,'20130921_185340','Added ECU ID: 4B4A346107 to extended parameters'),
- (193,'20130921_185809','Updated ECU ID: 6E12786007 extended parameters ');
+ (193,'20130921_185809','Updated ECU ID: 6E12786007 extended parameters '),
+ (194,'20131030_222326','Added ECU ID: 181A250205 to extended parameters'),
+ (195,'20131112_180648','Added ECU ID: 8F12783007 to extended parameters. Added new parameters P242 ... P245'),
+ (196,'20131112_223044','Updated ECU ID: 7452584007 extended parameters \nChanged address/length entry for ECU ID 7452584007 for extended parameter E33'),
+ (197,'20131113_172949','Updated ECU ID: 7212786107 extended parameters '),
+ (198,'20131113_182956','Added ECU ID: 6E12787007 to extended parameters');
 /*!40000 ALTER TABLE `version` ENABLE KEYS */;
 
 
