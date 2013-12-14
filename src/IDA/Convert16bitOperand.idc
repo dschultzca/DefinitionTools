@@ -1,12 +1,12 @@
 /*
-* Copyright (C) 2012  Dale C. Schultz
+* Copyright (C) 2013  Dale C. Schultz
 * RomRaider member ID: dschultz
 *
 * You are free to use this script for any purpose, but please keep
 * notice of where it came from!
 *
-* Version: 3
-* Date   : 2012-12-16
+* Version: 4
+* Date   : 2013-12-09
 *
 * This script attempts to convert immediate and indirect references to
 * offsets if the value is greater than 0x00FF.
@@ -41,7 +41,7 @@ static main() {
 		Message(form("%s processor not supported by Convert16bitOperand() function\n", proc));
 		return;
 	}
-	if (SegByName("DATA") == BADADDR) {
+	if (SegByName("RAM") == BADADDR) {
 		Warning("This ROM is not segmented properly for use by the Convert16bitOperand() function");
 		return;
 	}
