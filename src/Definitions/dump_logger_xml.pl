@@ -1,6 +1,6 @@
 #!/usr/bin/perl 
 
-# Copyright (C) 2013 Dale C. Schultz
+# Copyright (C) 2014 Dale C. Schultz
 # RomRaider member ID: dschultz
 #
 # You are free to use this source for any purpose, but please keep
@@ -9,8 +9,8 @@
 #
 # Purpose
 #	Reads the database and dumps logger XML file to STDOUT
-#	Version:    10
-#	Update:     July. 23/2013
+#	Version:    11
+#	Update:     Jan. 01/2014
 #------------------------------------------------------------------------------------------
 
 # dump format
@@ -395,7 +395,7 @@ sub get_conversion_id {
 	my $units, $type, $expression, $format, $min, $max, $step, $std, $imp, $metric, $units_de, $gauge;
 	my $orderby = "conversion.order_$measure";
 	my $sql = qq( 
-		SELECT conversion.units, conversion.type, conversion.expression, conversion.format,
+		SELECT conversion.units, conversion.type, conversion.expression, conversion.format, conversion.min, conversion.max, conversion.step,
 		conversion.order_std, conversion.order_imp, conversion.order_metric, conversion.units_de
 		FROM conversion_rel
 		LEFT JOIN conversion ON conversion_rel.conversionid=conversion.serial
@@ -404,7 +404,7 @@ sub get_conversion_id {
 		);
 		my $sth = $dbh->prepare($sql);
 	$sth->execute($ecuparamid);
-	$sth->bind_columns(\$units, \$type, \$expression, \$format, \$std, \$imp, \$metric, \$units_de);
+	$sth->bind_columns(\$units, \$type, \$expression, \$format, \$min, \$max, \$step, \$std, \$imp, \$metric, \$units_de);
 	while ($sth->fetch) {
 		$storage = "storagetype=\"${type}\" " if ($type);
 		$units = $units_de if ($units_de ne '' && $locale eq "de");
