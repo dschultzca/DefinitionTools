@@ -9,8 +9,8 @@
 #
 # Purpose
 #	Reads the database and dumps logger XML file to STDOUT
-#	Version:    11
-#	Update:     Jan. 01/2014
+#	Version:    12
+#	Update:     Feb. 10/2014
 #------------------------------------------------------------------------------------------
 
 # dump format
@@ -294,35 +294,42 @@ while ($sth->fetch) {
 $sth->finish;
 &get_address_id;
 foreach $id (sort {$a<=>$b} keys %ecuparam_id) {
-	my $param_serial = $ecuparam_id{$id};
-	my @ecuids = get_ecu_id($param_serial);
 	print "                <ecuparam id=\"E${id}\" name=\"$ecuparam_id{$id}{'name'}\" desc=\"$ecuparam_id{$id}{'desc'}\" target=\"$ecuparam_id{$id}{'target'}\">\n";
 	if ($groupEcuId) {
 		foreach $addrgrp (sort {$a<=>$b} keys %{$address_group{$id}}) {
 			my $length = '';
+			my $bit = '';
 			if ($address_group{$id}{$addrgrp}{'length'} > 1) {
 				$length = " length=\"$address_group{$id}{$addrgrp}{'length'}\"";
 			}
-			$addressList = $address_group{$id}{$addrgrp}{'ecuidList'};
-			$addressList =~ s/,$//;
-			print "                    <ecu id=\"${addressList}\">\n";
-			printf("                        <address${length}>0x%06X</address>\n", $addrgrp);
+			if ($address_group{$id}{$addrgrp}{'bit'} != -1) {
+				$bit = " bit=\"$address_group{$id}{$addrgrp}{'bit'}\"";
+			}
+			$ecuidList = $address_group{$id}{$addrgrp}{'ecuidList'};
+			$ecuidList =~ s/,$//;
+			print "                    <ecu id=\"${ecuidList}\">\n";
+			printf("                        <address${length}${bit}>0x%06X</address>\n", $addrgrp);
 			print "                    </ecu>\n";
 		}
 	}
 	else {
+		my @ecuids = get_ecu_id($id);
 		foreach $ecuid (@ecuids) {
 			my $length = '';
-			if ($address_id{$ecuid}{$param_serial}{'length'} > 1) {
-				$length = " length=\"$address_id{$ecuid}{$param_serial}{'length'}\"";
+			my $bit = '';
+			if ($address_id{$ecuid}{$id}{'length'} > 1) {
+				$length = " length=\"$address_id{$ecuid}{$id}{'length'}\"";
+			}
+			if ($address_id{$ecuid}{$id}{'bit'} ne '') {
+				$bit = " bit=\"$address_id{$ecuid}{$id}{'bit'}\"";
 			}
 			print "                    <ecu id=\"${ecuid}\">\n";
-			print "                        <address${length}>0x$address_id{$ecuid}{$param_serial}{'address'}</address>\n";
+			printf("                        <address${length}${bit}>0x%06X</address>\n", $address_id{$ecuid}{$id}{'address'});
 			print "                    </ecu>\n";
 		}
 	}
 	print "                    <conversions>\n";
-	get_conversion_id($param_serial);
+	get_conversion_id($ecuparam_id{$id});
 	print "                    </conversions>\n";
 	print "                </ecuparam>\n";
 }
@@ -353,8 +360,10 @@ sub get_address_id {
 		$address_id{$ecuid}{$ecuparam}{'address'} = $address;
 		$address_id{$ecuid}{$ecuparam}{'length'} = $length;
 		$address_id{$ecuid}{$ecuparam}{'bit'} = $bit;
+		$bit = -1 if ($bit eq '');
 		$address_group{$ecuparam}{hex($address)}{'ecuidList'} .= "${ecuid},";
 		$address_group{$ecuparam}{hex($address)}{'length'} = $length;
+		$address_group{$ecuparam}{hex($address)}{'bit'} = $bit;
 	}
 	return;
 }
@@ -442,10 +451,10 @@ sub get_ecu_id {
 	}
 
 	#debug print out array
-	# for $key (keys %unique_id) {
-		# print "Key: $key Value: $unique_id{$key}\n";
+	# for $ecuid (@ecuids) {
+		# print STDERR "ID: $ecuid\n";
 	# }
-	# $sth->finish;
+	$sth->finish;
 	return @ecuids;
 }
 
