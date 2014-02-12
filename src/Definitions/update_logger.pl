@@ -1,6 +1,6 @@
 #!/usr/bin/perl 
 #
-# Copyright (C) 2013  Dale C. Schultz
+# Copyright (C) 2014  Dale C. Schultz
 # RomRaider member ID: dschultz
 #
 # You are free to use this source for any purpose, but please keep
@@ -9,8 +9,8 @@
 #
 # Purpose
 #   Reads from IDC dump file to update MySQL Logger definitions tables.
-#	Version:	7
-#	Update:		Jan. 03/2013	
+#	Version:	8
+#	Update:		Feb. 06/2014	
 #------------------------------------------------------------------------------------------
 
 use File::Basename;
@@ -27,7 +27,7 @@ if ($ARGV[1] eq "-commit") {$commit = 1};
 open (INPUT, "$param_file") || die "Could not open file $param_file : $!\n";
 $param_file = basename($param_file);
 $param_file =~ s/\.txt//;
-$param_file = uc($param_file);
+$ecuid = uc($param_file);
 use DBI;
 
 # create a handle and connect to the statistics database
@@ -36,15 +36,8 @@ $dbh = DBI->connect (
 	'xxxx','xxxx',{AutoCommit=>1, RaiseError=>0, PrintError=>0})
 	or die "$0: Couldn't connect to database";
 
-# build arrays from the database tables, lookups in memory are faster
-# than multiple queries of the database
 &get_db_version;
 &get_ecuparam_id;
-&get_address_id;
-&get_ecu_id;
-&get_unique_id;
-&get_unique_id_check;
-#goto THE_END;
 $add_ecuid = 0;
 $add_addr = 0;
 $change_addr = 0;
@@ -52,38 +45,40 @@ $add_entry = 0;
 
 print "Current Database Version: $db_id ($db_version)\n";
 #check if we have the ECU ID already
-if (!$ecuid_id{$param_file})
+$ecuid_serial = get_ecu_id($ecuid);
+if ($ecuid_serial)
 {
-	print "ECU ID $param_file is not defined.\n";
-	if ($commit)
-	{
-		new_ecuid_entry($param_file);
-		$update = "Added ECU ID: $param_file to extended parameters\n";
-		print "+COMMIT: ECU ID $param_file ($ecuid_id{$param_file}) added.\n";
-	}
-	else
-	{
-		print "+TEST: ECU ID $param_file will be added.\n";
-	}
-		$add_ecuid++;
+	print "ECU ID $ecuid ($ecuid_serial) exists.\n";
+	$update = "Updated ECU ID: $ecuid extended parameters \n";
 }
 else
 {
-	print "ECU ID $param_file ($ecuid_id{$param_file}) exists.\n";
-	$update = "Updated ECU ID: $param_file extended parameters \n";
+	print "ECU ID $ecuid is not defined.\n";
+	if ($commit)
+	{
+		$ecuid_serial = new_ecuid_entry($ecuid);
+		$update = "Added ECU ID: $ecuid to extended parameters\n";
+		print "+  COMMIT: ECU ID $ecuid ($ecuid_serial) added.\n\n";
+	}
+	else
+	{
+		print "+  TEST: ECU ID $ecuid will be added.\n\n";
+	}
+		$add_ecuid++;
 }
 $count = 0;
 $count1 = 0;
 foreach $line (<INPUT>)
 {
+	$bit = '';
 	$count++;
 	if ($line =~ /^\#/)
 	{
 		$count--;
 		next;
 	}
-	@values = split(/\s+/, $line);		# line format expected: Extended Paramter ID <space> RAM Address
-	if ($#values != 1)					# line should only contain two values
+	@values = split(/\s+/, $line);		# line format expected: Extended Paramter ID <space> RAM Address [<space> bit]
+	if ($#values > 2)					# line contains two or three values
 	{
 		print "WARNING: Line $count invalid number of parameters, line skipped.\n";
 		$warn++;
@@ -97,6 +92,10 @@ foreach $line (<INPUT>)
 		$values[1] =~ s/.*(\w{6,6}$)/\1/;	# make the address six bytes long
 	}
 	$addr = $values[1];
+	if ($#values == 2)					# line contains three values, get bit
+	{
+		$bit = $values[2];
+	}
 	# check if we have the Extended Parameter id already
 	if (!$ecuparam_id{$extid})
 	{
@@ -108,75 +107,90 @@ foreach $line (<INPUT>)
 	# default length of data expected for this Extended Parameter id
 	$deft_len = $ecuparam_len{$ecuparam_id{$extid}};
 
-	# check if we have the RAM address/length id already
-	if (!$address_id{$addr}{$deft_len})
+	# check that the bit value is appropriate for the length
+	$address_id = '';
+	if (($deft_len == 1 && $bit >= 0 && $bit <= 7 ) ||
+		($deft_len == 2 && $bit >= 0 && $bit <= 15) ||
+		($deft_len == 4 && $bit >= 0 && $bit <= 31))
 	{
-		print "Address $addr/$deft_len is not defined.\n";
+		$address_id = get_address_id($addr, $deft_len, $bit);
+	}
+	else
+	{
+		print "WARNING: Incompatible bit value passed for parameter address length, length:$deft_len, bit:$bit\n";
+		$warn++;
+	}
+
+	# check if we have the RAM address/length/bit id already
+	$address_id = get_address_id($addr, $deft_len, $bit);
+	if ($address_id)
+	{
+		print "Address $addr/$deft_len/$bit ($address_id) exists.\n\n";
+	}
+	else
+	{
+		print "Address $addr/$deft_len/$bit is not defined.\n";
 		if ($commit)
 		{
-			new_addr_entry($addr, $deft_len);
-			print "+COMMIT: Address $addr/$deft_len ($address_id{$addr}{$deft_len}) added.\n";
+			$address_id = new_addr_entry($addr, $deft_len, $bit);
+			print "+  COMMIT: Address $addr/$deft_len/$bit ($address_id) added.\n\n";
 		}
 		else
 		{
-			print "+TEST: Address $addr/$deft_len will be added.\n";
+			print "+  TEST: Address $addr/$deft_len/$bit will be added.\n\n";
 		}
 		$add_addr++;
 	}
-	else
+	# check to see if the parameter entry exists and if the address_id matches or not.
+	# If they don't match then UPDATE rather than INSERT the entry
+	($param_rel_id, $address_serial) = get_relation_id($ecuid_serial, $ecuparam_id{$extid});
+	if ($param_rel_id)
 	{
-		# print "Address $addr/$deft_len ($address_id{$addr}{$deft_len}) exists.\n";
-	}
-	# check to see if the parameter entry exists and if the address and data length match or not
-	# if they do not match then UPDATE rather than INSERT the entry
-	if (defined($unique_id_check{$param_file.$extid}) &&
-		($unique_id_check{$param_file.$extid} != $address_id{$addr}{$deft_len}))
-	{
-		$current_addr = $db_address{$unique_id_check{$param_file.$extid}};		# hex addr value
-		$current_len = $db_address_len{$unique_id_check{$param_file.$extid}};	# data length
-		$current_addr_id = $address_id{$current_addr}{$current_len};			# address serial number
-		$new_addr = $addr;
-		$new_len = $deft_len;
-		$new_addr_id = $address_id{$new_addr}{$new_len};
-		if ($commit)
+		if ($address_serial == $address_id)
 		{
-			update_unique_entry($unique_id_check_sn{$param_file.$extid}, $new_addr_id);
-			print "*  COMMIT: Address entry $current_addr/$current_len ($current_addr_id) ";
-			print "for $param_file/E${extid} - changed to $new_addr/$new_len ($new_addr_id).\n";
-			$update = $update."Changed address/length entry for ECU ID $param_file for extended parameter E${extid}\n";
+				print "E${extid} - Parameter combination Address entry matches ($address_serial), no change.\n\n";
 		}
 		else
 		{
-			print "*  INFO: Address entry $current_addr/$current_len ($current_addr_id) ";
-			print "for $param_file/E${extid} - will change to $new_addr/$new_len ($new_addr_id).\n";
-		}
-		$change_addr++;
-	}
-	else
-	{
-		# finally check to see if the ECU ID is already defined in the database for this Extended Parameter
-		if (!$unique_id{$param_file.$extid.$addr.$deft_len})
-		{
-			print "  E${extid} - Parameter combination is not defined.\n";
 			if ($commit)
 			{
-				new_unique_entry($extid, $param_file, $addr, $deft_len);
-				print "+  COMMIT: E${extid} - unique entry ($unique_id{$param_file.$extid.$addr.$deft_len}) added.\n";
+				update_unique_entry($param_rel_id, $address_id);
+				print "~  COMMIT: E${extid} - Parameter combination Address entry ($address_serial) ";
+				print "changed to $address_id.\n\n";
+				$update = $update."Changed address/length/bit entry for ECU ID $ecuid for extended parameter E${extid}\n";
 			}
 			else
 			{
-				print "+  TEST: E${extid} - will be added.\n";
+				print "*  TEST: E${extid} - Parameter combination Address entry ($address_serial) ";
+				if ($address_id)
+				{
+					print "will change to $address_id.\n\n";
+				}
+				else
+				{
+					print "will be updated.\n\n";
+				}
 			}
-			$add_entry++;
+			$change_addr++;
+		}
+	}
+	else
+	{
+		print "E${extid} - Parameter combination is not defined.\n";
+		if ($commit)
+		{
+			$param_rel_id = new_unique_entry($ecuid_serial, $ecuparam_id{$extid}, $address_id);
+			print "+  COMMIT: E${extid} - unique entry ($param_rel_id) added.\n\n";
 		}
 		else
 		{
-			print "   ECU ID $param_file ($ecuid_id{$param_file}) exists for extended parameter E${extid} ($unique_id{$param_file.$extid.$addr.$deft_len}).\n";
+			print "+  TEST: E${extid} - will be added.\n\n";
 		}
+		$add_entry++;
 	}
 	$count1++;
 }
-print "\n$count1 of $count lines evaluated.\n";
+print "$count1 of $count lines evaluated.\n";
 if ($warn)
 {
 	print "$warn WARNING(S)\n";
@@ -199,8 +213,9 @@ else
 print "Summary:\n";
 print "\tECU ID added: $add_ecuid\n" if ($add_ecuid);
 print "\tAddresses added: $add_addr\n" if ($add_addr);
-print "\tAddresses changed: $change_addr\n" if ($change_addr);
+print "\tParameter Combo Addresses changed: $change_addr\n" if ($change_addr);
 print "\tEntries added: $add_entry\n" if ($add_entry);
+print "\tNo changes\n" if (!$add_ecuid && !$add_addr && !$change_addr && !$add_entry);
 
 THE_END:
 $dbh->do("FLUSH TABLES");
@@ -212,6 +227,7 @@ exit;
 sub get_db_version {
 	# get database version
 	my $id, $version;
+
 	my $sql = qq(SELECT id, version FROM version ORDER BY id DESC LIMIT 1);
 	my $sth = $dbh->prepare($sql);
 	$sth->execute;
@@ -220,12 +236,12 @@ sub get_db_version {
 		$db_id=$id;
 		$db_version=$version;
 	}
-	$sth->finish;
 }
 
 sub get_ecuparam_id {
 	# create an array for all of the extended parameters
 	my $serial, $id, $length;
+
 	my $sql = qq(SELECT serial, id, length FROM ecuparam);
 	my $sth = $dbh->prepare($sql);
 	$sth->execute;
@@ -234,106 +250,84 @@ sub get_ecuparam_id {
 		$ecuparam_id{$id}=$serial;
 		$ecuparam_len{$serial}=$length;
 	}
-	# for $key (keys %ecuparam_len) {
-		# print "Key: $key Value: $ecuparam_len{$key}\n";
-	# }
-	$sth->finish;
 }
 
 sub get_address_id {
-	# create an array for all of the addresses
-	my $serial, $address, $length;
-	my $sql = qq(SELECT * FROM address);
+	# return the id of the passed address/length/bit
+	my $serial;
+	my $address = shift;
+	my $length = shift;
+	my $bit = shift;
+
+	if ($bit eq '')
+	{
+		$bit = " IS NULL";
+	}
+	elsif ($bit >= 0 && $bit <= 31)
+	{
+		$bit = "='" . $bit . "'";
+	}
+	else
+	{
+		report_error("Invalid address bit value passed, value:$bit");
+	}
+	my $sql = qq[SELECT serial FROM address where address='$address' and length='$length' and bit$bit];
 	my $sth = $dbh->prepare($sql);
 	$sth->execute;
-	$sth->bind_columns(\$serial, \$address, \$length);
+	$sth->bind_columns(\$serial);
+	my $count = 0;
 	while ($sth->fetch) {
-		$address_id{$address}{$length}=$serial;
-		$db_address{$serial} = $address;
-		$db_address_len{$serial} = $length;
+		$count++;
 	}
-	#for $key (keys %db_address) {
-		#print "Key: $key Value: $db_address{$key}\n";
-	#}
-	$sth->finish;
+	report_error("More than one address/length/bit combo found in database") if ($count > 1);
+	return $serial;
 }
 
 sub get_ecu_id {
-	# create an array for all of the ECU IDs
-	my $serial, $ecuid;
-	my $sql = qq(SELECT serial,ecuid FROM ecuid);
+	# get serial number for the ECU ID
+	my $ecuid = shift;
+	my $serial;
+
+	my $sql = qq(SELECT serial FROM ecuid where ecuid='$ecuid');
 	my $sth = $dbh->prepare($sql);
 	$sth->execute;
-	$sth->bind_columns(\$serial, \$ecuid);
+	$sth->bind_columns(\$serial);
+	my $count = 0;
 	while ($sth->fetch) {
-		$ecuid_id{$ecuid}=$serial;
+		$count++;
 	}
-	# for $key (keys %ecuid_id) {
-		# print "Key: $key Value: $ecuid_id{$key}\n";
-	# }
-	$sth->finish;
+	report_error("More than one ECU ID found in database") if ($count > 1);
+	return $serial;
 }
 
-sub get_unique_id_check {
-	# create an array for all of the ECU ID, Extended Parameters, Address and length 
-	my $component, $addr_id, $id;
-	my $sql = qq[SELECT 
-		CONCAT(ecuid.ecuid, ecuparam.id) AS component, ecuparam_rel.addressid AS addr_id, ecuparam_rel.serial AS id
-		FROM ecuparam_rel
-		LEFT JOIN ecuid ON ecuparam_rel.ecuidid = ecuid.serial
-		LEFT JOIN ecuparam ON ecuparam_rel.ecuparamid = ecuparam.serial
-		];
+sub get_relation_id {
+	# get the serial number for the ECU ID, Extended Parameter, Address combo
+	my $ecuid_id = shift;
+	my $param_id = shift;
+	my $serial, $address_serial;
+
+	my $sql = qq[SELECT serial,addressid from ecuparam_rel 
+		WHERE ecuparamid='$param_id' 
+		AND ecuidid='$ecuid_id'];
 	my $sth = $dbh->prepare($sql);
 	$sth->execute;
-	$sth->bind_columns(\$component, \$addr_id, \$id);
-
-	# get the returned rows and create the array
+	$sth->bind_columns(\$serial, \$address_serial);
+	my $count = 0;
 	while ($sth->fetch) {
-		$unique_id_check{$component}=$addr_id;
-		$unique_id_check_sn{$component}=$id;
+		$count++;
 	}
-
-	#debug print out array
-	#for $key (keys %unique_id_check) {
-		#print "Key: $key Value: $unique_id_check{$key}\n";
-	#}
-	$sth->finish;
-}
-	
-sub get_unique_id {
-	# create an array for all of the ECU ID, Extended Parameters, Address and length 
-	my $component, $id;
-	my $sql = qq[SELECT 
-		CONCAT(ecuid.ecuid,ecuparam.id,address.address,address.length) AS component,
-		ecuparam_rel.serial AS id
-		FROM ecuid, ecuparam, address, ecuparam_rel
-		WHERE ecuparam_rel.ecuparamid=ecuparam.serial
-		AND ecuparam_rel.ecuidid=ecuid.serial
-		AND ecuparam_rel.addressid=address.serial];
-	my $sth = $dbh->prepare($sql);
-	$sth->execute;
-	$sth->bind_columns(\$component, \$id);
-
-	# get the returned rows and create the array
-	while ($sth->fetch) {
-		$unique_id{$component}=$id;
-	}
-
-	#debug print out array
-	# for $key (keys %unique_id) {
-		# print "Key: $key Value: $unique_id{$key}\n";
-	# }
-	$sth->finish;
+	report_error("More than one ECU ID/Parameter/Address combo found in database") if ($count > 1);
+	return ($serial, $address_serial);
 }
 
 sub update_unique_entry {
-	# Address and length entry for an exisitng parameter
+	# Update Address ID entry for an exisitng parameter
 	my $serial = shift;
 	my $addr_id = shift;
+
 	my $sql = qq[UPDATE ecuparam_rel SET addressid = '$addr_id' WHERE serial = '$serial'];
 	my $sth = $dbh->prepare($sql);
 	$sth->execute;
-	$sth->finish;
 }
 
 sub update_version {
@@ -346,7 +340,6 @@ sub update_version {
 	my $sql_version_in = qq[INSERT INTO `version` (`version`, `update`)  VALUES ('$version', '$update')];
 	my $sth = $dbh->prepare($sql_version_in);
 	$sth->execute;
-	$sth->finish;
 }
 
 sub new_ecuid_entry {
@@ -355,12 +348,10 @@ sub new_ecuid_entry {
 
 	my $ecuid = shift;			# ECU ID pasted to subroutine
 
-	# if not already in the list insert a new entry and requery
 	my $sql_ecuid_in = qq[INSERT INTO ecuid (ecuid) VALUES ('$ecuid')];
 	my $sth = $dbh->prepare($sql_ecuid_in);
 	$sth->execute;
-	&get_ecu_id;
-	$sth->finish;
+	return $sth->{mysql_insertid};
 }
 
 sub new_addr_entry {
@@ -369,30 +360,49 @@ sub new_addr_entry {
 
 	my $address = shift;		# RAM address pasted to subroutine
 	my $addr_len = shift;		# length of data to retrieve at address pasted to subroutine
+	my $addr_bit = shift;		# bit to isolate at address pasted to subroutine
 
-	# next the address (if not already in the list insert a new entry and requery)
-	my $sql_addr_in = qq[INSERT INTO address (address, length) VALUES ('$address', '$addr_len')];
+	if ($addr_bit eq '')
+	{
+		$addr_bit = "NULL";
+	}
+	elsif ($addr_bit >= 0 && $addr_bit <= 31)
+	{
+		$addr_bit = "'$addr_bit'";
+	}
+	else
+	{
+		report_error("Invalid address bit value passed, value:$addr_bit");
+	}
+
+	my $sql_addr_in = qq[INSERT INTO address (address,length,bit) VALUES ('$address','$addr_len',$addr_bit)];
 	my $sth = $dbh->prepare($sql_addr_in);
 	$sth->execute;
-	&get_address_id;
-	$sth->finish;
+	return $sth->{mysql_insertid};
 }
 
 sub new_unique_entry {
 	# create a new entry in the database for the current Extended Parameter as we have
 	# not seen it before. 
 
-	my $extparamid = shift;		# Extended parameter pasted to subroutine
-	my $ecuid = shift;			# ECU ID pasted to subroutine
-	my $address = shift;		# RAM address pasted to subroutine
-	my $addr_len = shift;		# length of data to retrieve at address pasted to subroutine
+	my $ecuid_id = shift;			# ECU ID pasted to subroutine
+	my $extparamid_id = shift;		# Extended parameter pasted to subroutine
+	my $address_id = shift;			# RAM address pasted to subroutine
+	my $serial = shift;	
 
 	# now we can insert the new Extended Parameter relation info into the table
 	my $sql_ecuparamrel_in = qq[INSERT INTO
 		ecuparam_rel (ecuparamid, ecuidid, addressid)
-		VALUES ('$ecuparam_id{$extparamid}', '$ecuid_id{$ecuid}', '$address_id{$address}{$addr_len}')];
+		VALUES ('$extparamid_id', '$ecuid_id', '$address_id')];
 	my $sth = $dbh->prepare($sql_ecuparamrel_in);
 	$sth->execute;
-	&get_unique_id;
-	$sth->finish;
+	return $sth->{mysql_insertid};
+}
+
+sub report_error {
+	my $message = shift;
+	print "ERROR: $message\n";
+	$dbh->do("FLUSH TABLES");
+	$dbh->disconnect;
+	exit;
 }
