@@ -9,8 +9,8 @@
     This script is called from the upload HTML form. It parses a logger.xml file
 	for exteneded parameters specified by ECU ID.  Extended parameters are then
 	checked against the logger database and updated or added as required.
-	Version:	1
-	Update:		Feb. 11/2014	
+	Version:	2
+	Update:		Jul. 26/2014	
 ------------------------------------------------------------------------------------------
 */
 
@@ -92,7 +92,7 @@ function DbAddAddress($con, $addr, $length, $bit)
 	{
 		$bit = "'" . $bit . "'";
 	}
-	$sql_addr_add = "INSERT INTO address (address,length,bit) VALUES ('" . str_replace("0x", "", $addr) . "','" . $length . "'," . $bit . ");";
+	$sql_addr_add = "INSERT INTO address (address,length,bit) VALUES ('" . $addr . "','" . $length . "'," . $bit . ");";
 	if (!mysqli_query($con, $sql_addr_add))
 	{
 		ReportError("Error adding address:" . mysqli_error($con), $con);
@@ -230,22 +230,24 @@ echo "<table border='0'>";
 foreach ($parameter_ids as $id)
 {
 	// query XML for all defined address attribute values using the Extended parameter id and ECU ID
-	$address = $xml->xpath("/logger/protocols/protocol[@id='SSM']/ecuparams/ecuparam[contains(@id, '". (string)$id . "')]/ecu[contains(@id, '". $ecuid . "')]/address");
+	$address = $xml->xpath("/logger/protocols/protocol[@id='SSM']/ecuparams/ecuparam[@id='". (string)$id . "']/ecu[contains(@id, '". $ecuid . "')]/address");
 
 	// query XML for the name attribute of this Extended parameter id
-	$name = $xml->xpath("/logger/protocols/protocol[@id='SSM']/ecuparams/ecuparam[contains(@id, '". (string)$id . "')]/@name");
+	$name = $xml->xpath("/logger/protocols/protocol[@id='SSM']/ecuparams/ecuparam[@id='". (string)$id . "']/@name");
 
 	foreach ($address as $addr)
 	{
 		$bit_value = NULL;
+		$db_addr = str_replace("0x0", "", $addr);
+		$db_addr = str_replace("0x", "", $db_addr);
 		// query XML for the bit attribute for this address and Extended parameter id and ECU ID
-		$bit = $xml->xpath("/logger/protocols/protocol[@id='SSM']/ecuparams/ecuparam[contains(@id, '". (string)$id . "')]/ecu[contains(@id, '". $ecuid . "')][address='" . (string)$addr . "']/address/@bit");
+		$bit = $xml->xpath("/logger/protocols/protocol[@id='SSM']/ecuparams/ecuparam[@id='". (string)$id . "']/ecu[contains(@id, '". $ecuid . "')][address='" . (string)$addr . "']/address/@bit");
 
 		if (count($bit) > 0)
 		{
 			$bit_value =  "<td>" . (string)$bit[0];
 		}
-		echo "<tr><td>E_" . ConvertName((string)$name[0]). "_" . (string)$id . "<td>" . str_replace("0x", "FF", $addr) . $bit_value;
+		echo "<tr><td>E_" . ConvertName((string)$name[0]). "_" . (string)$id . "<td>" . $addr . $bit_value;
 
 		// Query database for the Extended parameter ID to get the serial number and data storage length
 		$query_ecuparam = "SELECT serial, length FROM ecuparam where id='" . str_replace("E", "", (string)$id) . "';";
@@ -278,7 +280,7 @@ foreach ($parameter_ids as $id)
 				($length == 2 && $bit_defined >= 0 && $bit_defined <= 15) ||
 				($length == 4 && $bit_defined >= 0 && $bit_defined <= 31))
 			{
-				$query_str = "SELECT serial FROM address where address='" . str_replace("0x", "", $addr) .
+				$query_str = "SELECT serial FROM address where address='" . $db_addr .
 							 "' and length='" . $data_length . "' and bit='" . $bit_defined . "';";
 			}
 			else
@@ -288,7 +290,7 @@ foreach ($parameter_ids as $id)
 		}
 		else
 		{
-			$query_str = "SELECT serial FROM address where address='" . str_replace("0x", "", $addr) .
+			$query_str = "SELECT serial FROM address where address='" . $db_addr .
 						 "' and length='" . $data_length . "' and bit IS NULL;";
 		}
 
@@ -312,7 +314,7 @@ foreach ($parameter_ids as $id)
 			if ($commit)
 			{
 				echo "<tr><td>address/length/bit combo not defined:" . $addr . "/" . $data_length . "/" . $bit_defined;
-				$address_serial = DbAddAddress($con, $addr, $data_length, $bit_defined);
+				$address_serial = DbAddAddress($con, $db_addr, $data_length, $bit_defined);
 				echo "<tr><td style=\"background-color:#00FF00\">COMMIT: address/length/bit combo new serial = " . $address_serial;
 				$changed++;
 			}
