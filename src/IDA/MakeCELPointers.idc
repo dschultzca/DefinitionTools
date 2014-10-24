@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013  Dale C. Schultz
+ * Copyright (C) 2014  Dale C. Schultz
  * RomRaider member ID: dschultz
  *
  * You are free to use this script for any purpose, but please keep
@@ -281,6 +281,9 @@ static CreatePcodeArray() {
 	SetArrayString(pcArray, 0x0088, "FUEL RAIL/SYSTEM PRESSURE - TOO HIGH");
 	SetArrayString(pcArray, 0x0091, "FUEL PRESSURE REGULATOR 1 CONTROL LOW");
 	SetArrayString(pcArray, 0x0092, "FUEL PRESSURE REGULATOR 1 CONTROL HIGH");
+	SetArrayString(pcArray, 0x0096, "IAT SENSOR 2 RANGE/PERF");
+	SetArrayString(pcArray, 0x0097, "IAT SENSOR 2 LOW INPUT");
+	SetArrayString(pcArray, 0x0098, "IAT SENSOR 2 HIGH INPUT");
 	SetArrayString(pcArray, 0x0101, "MAF SENSOR RANGE/PERF");
 	SetArrayString(pcArray, 0x0102, "MAF SENSOR LOW INPUT");
 	SetArrayString(pcArray, 0x0103, "MAF SENSOR HIGH INPUT");
