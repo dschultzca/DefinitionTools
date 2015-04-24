@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 NSFW@romraider.forum and Dale C. Schultz
+ * Copyright (C) 2015 NSFW@romraider.forum and Dale C. Schultz
  * RomRaider member ID: NSFW and dschultz
  *
  * You are free to use this script for any purpose, but please keep
@@ -39,83 +39,99 @@ namespace NSFW.XmlToIdc
                 return;
             }
             
-            if (CategoryIs(args, "tables"))
+            if (CategoryIs (args, "tables"))
             {
                 if (args.Length != 2)
                 {
-                    UsageTables();
+                    UsageTables ();
                 }
                 else
                 {
-                    string calId = args[1].ToUpper();
+                    string calId = args [1].ToUpper ();
                     string functionName = "Tables_" + calId;
-                    WriteHeader1(functionName, string.Format("Table definitions for {0}", calId));
-                    DefineTables(functionName, calId);
+                    WriteHeader1 (functionName, string.Format ("Table definitions for {0}", calId));
+                    DefineTables (functionName, calId);
                 }
             }
-            else if (CategoryIs(args, "stdparam"))
+            else if (CategoryIs (args, "stdparam"))
             {
                 if (args.Length != 5)
                 {
-                    UsageStdParam();
+                    UsageStdParam ();
                 }
                 else
                 {
-                    string cpu = args[1];
-                    string target = args[2].ToUpper();
-                    string calId = args[3].ToUpper();
-                    string ssmBaseString = args[4].ToUpper();
+                    string cpu = args [1];
+                    string target = args [2].ToUpper ();
+                    string calId = args [3].ToUpper ();
+                    string ssmBaseString = args [4].ToUpper ();
                     string functionName = "StdParams_" + calId;
-                    uint ssmBase = ConvertBaseString(ssmBaseString);
-                    WriteHeader1(functionName,
-                                 string.Format("Standard parameter definitions for {0} bit {1}: {2} with SSM read vector base {3}",
-                                  cpu, target, calId, ssmBase.ToString("X")));
-                    DefineStandardParameters(functionName, target, calId, ssmBase, cpu);
+                    uint ssmBase = ConvertBaseString (ssmBaseString);
+                    WriteHeader1 (functionName,
+                        string.Format ("Standard parameter definitions for {0} bit {1}: {2} with SSM read vector base {3}",
+                            cpu, target, calId, ssmBase.ToString ("X")));
+                    DefineStandardParameters (functionName, target, calId, ssmBase, cpu);
                 }
             }
-            else if (CategoryIs(args, "extparam"))
+            else if (CategoryIs (args, "extparam"))
             {
                 if (args.Length != 4)
                 {
-                    UsageExtParam();
+                    UsageExtParam ();
                     return;
                 }
                 else
                 {
-                    string cpu = args[1];
-                    string target = args[2].ToUpper();
-                    string ecuId = args[3].ToUpper();
+                    string cpu = args [1];
+                    string target = args [2].ToUpper ();
+                    string ecuId = args [3].ToUpper ();
                     string functionName = "ExtParams_" + ecuId;
-                    WriteHeader1(functionName,
-                                 string.Format("Extended parameter definitions for {0} bit {1}: {2}",
-                                  cpu, target, ecuId));
-                    DefineExtendedParameters(functionName, target, ecuId, cpu);
+                    WriteHeader1 (functionName,
+                        string.Format ("Extended parameter definitions for {0} bit {1}: {2}",
+                            cpu, target, ecuId));
+                    DefineExtendedParameters (functionName, target, ecuId, cpu);
                 }
             }
-            else if (CategoryIs(args, "makeall"))
+            else if (CategoryIs (args, "makeall"))
             {
                 if (args.Length != 4)
                 {
-                    UsageMakeAll();
+                    UsageMakeAll ();
                     return;
                 }
                 else
                 {
-                    string target = args[1].ToUpper();
-                    string calId = args[2].ToUpper();
-                    string ssmBaseString = args[3].ToUpper();
+                    string target = args [1].ToUpper ();
+                    string calId = args [2].ToUpper ();
+                    string ssmBaseString = args [3].ToUpper ();
                     string functionName1 = "Tables";
                     string functionName2 = "StdParams";
                     string functionName3 = "ExtParams";
-                    WriteHeader3(functionName1, functionName2, functionName3,
-                                 string.Format("All definitions for {0}: {1} with SSM read vector base {2}",
-                                  target, calId, ssmBaseString));
+                    WriteHeader3 (functionName1, functionName2, functionName3,
+                        string.Format ("All definitions for {0}: {1} with SSM read vector base {2}",
+                            target, calId, ssmBaseString));
                     string[] results = new string[2];
-                    results = DefineTables(functionName1, calId);
-                    uint ssmBase = ConvertBaseString(ssmBaseString);
-                    DefineStandardParameters(functionName2, target, calId, ssmBase, results[1]);
-                    DefineExtendedParameters(functionName3, target, results[0], results[1]);
+                    results = DefineTables (functionName1, calId);
+                    uint ssmBase = ConvertBaseString (ssmBaseString);
+                    DefineStandardParameters (functionName2, target, calId, ssmBase, results [1]);
+                    DefineExtendedParameters (functionName3, target, results [0], results [1]);
                 }
+            }
+            else if (CategoryIs (args, "ecuf"))
+            {
+                if (args.Length != 2)
+                {
+                    Usage();
+                }
+                else
+                {
+                    string fileName = args[1].ToUpper();
+                    DefineEcufTables (fileName);
+                }
+            }
+            else
+            {
+                Usage();
             }
         }
         
@@ -193,6 +209,21 @@ namespace NSFW.XmlToIdc
             WriteFooter(functionName);
         }
         
+        private static string[] DefineEcufTables(string fileName)
+        {
+            if (!File.Exists(fileName))
+            {
+                MessageBox.Show(fileName + " not found.",
+                    "Error - ECU Definition File not found",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Exclamation,
+                    MessageBoxDefaultButton.Button1);
+                return null;
+            }
+            WriteEcufTableNames(fileName);
+            return null;
+        }
+
 #endregion
         
         private static string[] WriteTableNames(string xmlId)
@@ -593,6 +624,137 @@ namespace NSFW.XmlToIdc
             }
         }
         
+        private static string[] WriteEcufTableNames(string filename)
+        {
+            string calId      = null;
+            string ecuid      = null;
+            string memmodel   = null;
+            int    tableCount = 0;
+            string datatype   = null;
+            bool   ecu16bit   = false;
+            int    dtaddr     = 0;
+
+            using (Stream stream = File.OpenRead(filename))
+            {
+                XPathDocument doc = new XPathDocument(stream);
+                XPathNavigator nav = doc.CreateNavigator();
+
+                tableCount = 0;
+                names.Clear();
+                string path = "/rom/romid/xmlid";
+                XPathNodeIterator iter = nav.Select(path);
+                iter.MoveNext();
+                nav = iter.Current;
+                nav.MoveToChild(XPathNodeType.Element);
+                calId = nav.InnerXml;
+                string functionName = "Tables_" + calId;
+                WriteHeader1 (functionName, string.Format ("Table definitions for {0}", calId));
+                WriteHeader2(functionName);
+                Console.WriteLine("auto referenceAddress;");
+
+                while (nav.MoveToNext())
+                {
+                    if (nav.Name == "ecuid")
+                    {
+                        ecuid = nav.InnerXml;
+                    }
+                    if (nav.Name == "memmodel")
+                    {
+                        memmodel = nav.InnerXml;
+                        break;
+                    }
+                }
+
+                if (string.IsNullOrEmpty(ecuid))
+                {
+                    Console.WriteLine("Could not find ECU ID for " + calId);
+                }
+                if (memmodel.Contains("68HC"))
+                {
+                    ecu16bit = true;
+                }
+
+                nav.MoveToParent();
+                while (nav.MoveToNext())
+                {
+                    if (nav.Name == "table")
+                    {
+                        string name = nav.GetAttribute("name", "");
+                        string storageAddress = nav.GetAttribute("address", "");
+                        if(!storageAddress.StartsWith("0x"))
+                        {
+                            storageAddress = "0x" + storageAddress.ToUpper();
+                        }
+
+                        name = ConvertName(name);
+                        UpdateTableList(name, storageAddress);
+                        if (ecu16bit)
+                        {
+                            datatype = ConvertName("Table_" + name);
+                            dtaddr = Convert.ToInt32(storageAddress , 16);
+                            dtaddr = dtaddr - 1;
+                        }
+
+                        List<string> axes = new List<string>();
+                        if (nav.HasChildren)
+                        {
+                            nav.MoveToChild(XPathNodeType.Element);
+
+                            do
+                            {
+                                string axis = nav.GetAttribute("name", "");
+                                if (!axis.ToUpper().Contains("AXIS"))
+                                {
+                                    axis = axis + "_Axis";
+                                }
+                                axes.Add(axis);
+                                string axisAddress = nav.GetAttribute("address", "");
+                                if(!axisAddress.StartsWith("0x"))
+                                {
+                                    axisAddress = "0x" + axisAddress.ToUpper();
+                                }
+
+                                if (axisAddress != "0x")
+                                {
+                                    axis = ConvertName(name + "_" + axis);
+                                    UpdateTableList(axis, axisAddress);
+                                }
+                            } while (nav.MoveToNext());
+
+                            if (axes.Count == 2 &&
+                                (axes[0].ToUpper() == "X_AXIS" && axes[1].ToUpper() == "Y_AXIS") &&
+                                !ecu16bit)
+                            {
+                                string tableName = ConvertName("Table_" + name);
+                                UpdateTableList(tableName, "2axis");
+                            }
+                            else if (axes.Count == 1 &&
+                                axes[0].ToUpper() == "Y_AXIS" &&
+                                !ecu16bit)
+                            {
+                                string tableName = ConvertName("Table_" + name);
+                                UpdateTableList(tableName, "1axis");
+                            }
+                            else if (axes.Count > 0 && ecu16bit && axes[0].ToUpper().Contains("AXIS"))
+                            {
+                                string dataTypeAddr = "0x" + dtaddr.ToString("X");
+                                UpdateTableList(datatype, dataTypeAddr);
+                            }
+                            nav.MoveToParent();
+                        }
+                        tableCount++;
+                    }
+                }
+                if (tableCount < 1)
+                {
+                    Console.WriteLine("// No tables found for ROM " + calId + ", used inherited ROM");
+                }
+                WriteIdcTableNames();
+                WriteFooter(functionName);
+            }
+            return null;
+        }
+
         #region Utility functions
         
         private static void WriteHeader1(string functionName, string description)
@@ -827,6 +989,7 @@ namespace NSFW.XmlToIdc
             builder.AppendLine("    stdparam <cpu> <target> <cal-id> <ssm-base>");
             builder.AppendLine("    extparam <cpu> <target> <ecu-id>");
             builder.AppendLine("    makeall  <target> <cal-id> <ssm-base>");
+            builder.AppendLine("    ecuf     <filename.xml>");
             builder.AppendLine();
             builder.AppendLine("Where <options> is the following as required by the category:");
             builder.AppendLine("    <cal-id>   is the Calibration id, e.g. A2WC522N");
