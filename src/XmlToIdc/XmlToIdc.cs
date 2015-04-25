@@ -394,6 +394,8 @@ namespace NSFW.XmlToIdc
             {
                 string tableName = pair.Key;
                 string tableAddress = pair.Value;
+				if (tableAddress == "0x")
+					continue;
                 string refTableName = "Table_" + tableName;
                 string refTableAddress = "";
                 if (tableList.TryGetValue(refTableName, out refTableAddress))
@@ -646,7 +648,7 @@ namespace NSFW.XmlToIdc
                 iter.MoveNext();
                 nav = iter.Current;
                 nav.MoveToChild(XPathNodeType.Element);
-                calId = nav.InnerXml;
+				calId = nav.InnerXml.Trim();
                 string functionName = "Tables_" + calId;
                 WriteHeader1 (functionName, string.Format ("Table definitions for {0}", calId));
                 WriteHeader2(functionName);
@@ -656,11 +658,11 @@ namespace NSFW.XmlToIdc
                 {
                     if (nav.Name == "ecuid")
                     {
-                        ecuid = nav.InnerXml;
+						ecuid = nav.InnerXml.Trim();
                     }
                     if (nav.Name == "memmodel")
                     {
-                        memmodel = nav.InnerXml;
+						memmodel = nav.InnerXml.Trim();
                         break;
                     }
                 }
@@ -677,10 +679,10 @@ namespace NSFW.XmlToIdc
                 nav.MoveToParent();
                 while (nav.MoveToNext())
                 {
-                    if (nav.Name == "table")
+					if (nav.Name.Trim() == "table")
                     {
-                        string name = nav.GetAttribute("name", "");
-                        string storageAddress = nav.GetAttribute("address", "");
+						string name = nav.GetAttribute("name", "").Trim();
+						string storageAddress = nav.GetAttribute("address", "").Trim();
                         if(!storageAddress.StartsWith("0x"))
                         {
                             storageAddress = "0x" + storageAddress.ToUpper();
@@ -702,13 +704,13 @@ namespace NSFW.XmlToIdc
 
                             do
                             {
-                                string axis = nav.GetAttribute("name", "");
+								string axis = nav.GetAttribute("name", "").Trim();
                                 if (!axis.ToUpper().Contains("AXIS"))
                                 {
                                     axis = axis + "_Axis";
                                 }
                                 axes.Add(axis);
-                                string axisAddress = nav.GetAttribute("address", "");
+								string axisAddress = nav.GetAttribute("address", "").Trim();
                                 if(!axisAddress.StartsWith("0x"))
                                 {
                                     axisAddress = "0x" + axisAddress.ToUpper();
@@ -722,15 +724,13 @@ namespace NSFW.XmlToIdc
                             } while (nav.MoveToNext());
 
                             if (axes.Count == 2 &&
-                                (axes[0].ToUpper() == "X_AXIS" && axes[1].ToUpper() == "Y_AXIS") &&
+								(axes[0].ToUpper().EndsWith("AXIS") && axes[1].ToUpper().EndsWith("AXIS")) &&
                                 !ecu16bit)
                             {
                                 string tableName = ConvertName("Table_" + name);
                                 UpdateTableList(tableName, "2axis");
                             }
-                            else if (axes.Count == 1 &&
-                                axes[0].ToUpper() == "Y_AXIS" &&
-                                !ecu16bit)
+                            else if (axes.Count == 1 && axes[0].ToUpper().EndsWith("AXIS") && !ecu16bit)
                             {
                                 string tableName = ConvertName("Table_" + name);
                                 UpdateTableList(tableName, "1axis");
