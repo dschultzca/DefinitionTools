@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014  Dale C. Schultz
+ * Copyright (C) 2015  Dale C. Schultz
  * RomRaider member ID: dschultz
  *
  * You are free to use this script for any purpose, but please keep
@@ -588,6 +588,7 @@ static CreatePcodeArray() {
 	SetArrayString(pcArray, 0x2128, "TPS E CIRCUIT HIGH INPUT");
 	SetArrayString(pcArray, 0x2135, "TPS A/B VOLTAGE");
 	SetArrayString(pcArray, 0x2138, "TPS D/E VOLTAGE");
+	SetArrayString(pcArray, 0x2158, "VEHICLE SPEED SENSOR B");
 	SetArrayString(pcArray, 0x2195, "O2 SENSOR SIGNAL BIASED/STUCK LEAN BANK 1 SENSOR 1");
 	SetArrayString(pcArray, 0x2196, "O2 SENSOR SIGNAL BIASED/STUCK RICH BANK 1 SENSOR 1");
 	SetArrayString(pcArray, 0x219A, "BANK 1 AFR IMBALANCE");
@@ -595,6 +596,10 @@ static CreatePcodeArray() {
 	SetArrayString(pcArray, 0x2227, "BARO. PRESSURE CIRCUIT RANGE/PERF");
 	SetArrayString(pcArray, 0x2228, "BARO. PRESSURE CIRCUIT LOW INPUT");
 	SetArrayString(pcArray, 0x2229, "BARO. PRESSURE CIRCUIT HIGH INPUT");
+	SetArrayString(pcArray, 0x2270, "O2 SENSOR SIGNAL BIASED/STUCK LEAN BANK 1 SENSOR 2");
+	SetArrayString(pcArray, 0x2271, "O2 SENSOR SIGNAL BIASED/STUCK RICH BANK 1 SENSOR 2");
+	SetArrayString(pcArray, 0x2272, "O2 SENSOR SIGNAL BIASED/STUCK LEAN BANK 2 SENSOR 2");
+	SetArrayString(pcArray, 0x2273, "O2 SENSOR SIGNAL BIASED/STUCK RICH BANK 2 SENSOR 2");
 	SetArrayString(pcArray, 0x2401, "EVAP LEAK DETECTION PUMP CONTROL CIRCUIT LOW");
 	SetArrayString(pcArray, 0x2402, "EVAP LEAK DETECTION PUMP CONTROL CIRCUIT HIGH");
 	SetArrayString(pcArray, 0x2404, "EVAP LEAK DETECTION PUMP SENSE CIRCUIT RANGE/PERF");
@@ -610,6 +615,8 @@ static CreatePcodeArray() {
 	SetArrayString(pcArray, 0x2444, "SECONDARY AIR PUMP 1 STUCK ON B1");
 	SetArrayString(pcArray, 0x2503, "CHARGING SYSTEM VOLTAGE LOW");
 	SetArrayString(pcArray, 0x2504, "CHARGING SYSTEM VOLTAGE HIGH");
+	SetArrayString(pcArray, 0x2257, "AIR SYSTEM CONTROL A CIRCUIT LOW");
+	SetArrayString(pcArray, 0x2258, "AIR SYSTEM CONTROL A CIRCUIT HIGH");
 	SetArrayString(pcArray, 0x2610, "ECM/PCM INTERNAL ENGINE OFF TIMER PERFORMANCE");
 	SetArrayString(pcArray, 0xC073, "CAN COMMUNICATION BUS A OFF");
 	SetArrayString(pcArray, 0xC100, "ENGINE DATA NOT RECEIVED");
