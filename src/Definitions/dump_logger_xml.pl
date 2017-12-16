@@ -8,9 +8,9 @@
 #
 #
 # Purpose
-#	Reads the database and dumps logger XML file to STDOUT
-#	Version:    15
-#	Update:     April 19/2017
+#   Reads the database and dumps logger XML file to STDOUT
+#   Version:    16
+#   Update:     December 15/2017
 #------------------------------------------------------------------------------------------
 
 # dump format
@@ -47,51 +47,50 @@ my $measure = $opt_u;
 my $preVersion = $opt_v;
 if (($locale ne "en" && $locale ne "de") ||
     ($measure ne "std" && $measure ne "imp" && $measure ne "metric")) {
-	print "\nUsage: $0 -g -l locale -u units -v previousVersion> <output_file.xml>\nThe optional -g flag groups the ECU IDs by common address.\nWhere locale is: 'en' or 'de'\n   and units is: 'std', 'imp' or 'metric'\n";
-	exit 1;
+    print "\nUsage: $0 -g -l locale -u units -v previousVersion> <output_file.xml>\nThe optional -g flag groups the ECU IDs by common address.\nWhere locale is: 'en' or 'de'\n   and units is: 'std', 'imp' or 'metric'\n";
+    exit 1;
 }
 my $unitname;
 if ($measure eq "std") {
-	$unitname = "STANDARD";
+    $unitname = "STANDARD";
 }
 if ($measure eq "imp") {
-	$unitname = "IMPERIAL";
+    $unitname = "IMPERIAL";
 }
 if ($measure eq "metric") {
-	$unitname = "METRIC";
+    $unitname = "METRIC";
 }
 
 # create a handle and connect to the statistics database
 $dbh = DBI->connect (
-	'DBI:mysql:database=definitions;host=localhost',
-	'xxxx','xxxx',{AutoCommit=>1, RaiseError=>0, PrintError=>0})
-	or die "$0: Couldn't connect to database";
-
+    'DBI:mysql:database=definitions;host=linux',
+    'xxxx','xxxx',{AutoCommit=>1, RaiseError=>0, PrintError=>0})
+    or die "$0: Couldn't connect to database";
 if ($preVersion eq "") {
-	# Get last version/update info to insert into def header
-	my $sql = qq(SELECT * FROM version ORDER BY id DESC LIMIT 1);
-	my $sth = $dbh->prepare($sql);
-	$sth->execute;
-	$sth->bind_columns(\$serial, \$version, \$update);
-	$sth->fetch;
-	$update =~ s/$\$\///;
-	$update =~ s/\r\n/ /;
+    # Get last version/update info to insert into def header
+    my $sql = qq(SELECT * FROM version ORDER BY id DESC LIMIT 1);
+    my $sth = $dbh->prepare($sql);
+    $sth->execute;
+    $sth->bind_columns(\$serial, \$version, \$update);
+    $sth->fetch;
+    $update =~ s/$\$\///;
+    $update =~ s/\r\n/ /;
 }
 else {
-	# Get update history from version provided and insert into def header
-	my $sql = qq(SELECT * FROM version where id > ? ORDER BY id);
-	my $sth = $dbh->prepare($sql);
-	my $myUpdate;
-	$sth->execute($preVersion);
-	$sth->bind_columns(\$serial, \$version, \$update);
-	while ($sth->fetch) {
-		$update =~ s/$\$\///;
-		$update =~ s/\r\n/ /;
-		$myUpdate = "${myUpdate}$serial $version $update\n"
-	}
-	$myUpdate =~ s/\r\n$//;
-	$update = $myUpdate;
-	chop $update;
+    # Get update history from version provided and insert into def header
+    my $sql = qq(SELECT * FROM version where id > ? ORDER BY id);
+    my $sth = $dbh->prepare($sql);
+    my $myUpdate;
+    $sth->execute($preVersion);
+    $sth->bind_columns(\$serial, \$version, \$update);
+    while ($sth->fetch) {
+        $update =~ s/$\$\///;
+        $update =~ s/\r\n/ /;
+        $myUpdate = "${myUpdate}$serial $version $update\n"
+    }
+    $myUpdate =~ s/\r\n$//;
+    $update = $myUpdate;
+    chop $update;
 }
 
 binmode(STDOUT, ":utf8");
@@ -102,87 +101,87 @@ binmode(STDOUT, ":utf8");
 # SSM Parameter list
 my $id, $reserved, $name, $desc, $byteidx, $bitidx, $target, $address, $length, $depends;
 if ($locale eq "de") {
-	$sql = qq(
-		SELECT parameter.serial, parameter.id, parameter.reserved, parameter.name_de,
-		parameter.desc_de, parameter.byteidx, parameter.bitidx, parameter.target,
-		address.address, address.length, depends.parameters
-		FROM parameter
-		LEFT JOIN parameter_rel ON parameter.serial = parameter_rel.parameterid
-		LEFT JOIN address ON parameter_rel.addressid=address.serial
-		LEFT JOIN depends ON parameter_rel.dependsid=depends.serial
-	  );
+    $sql = qq(
+        SELECT parameter.serial, parameter.id, parameter.reserved, parameter.name_de,
+        parameter.desc_de, parameter.byteidx, parameter.bitidx, parameter.target,
+        address.address, address.length, depends.parameters
+        FROM parameter
+        LEFT JOIN parameter_rel ON parameter.serial = parameter_rel.parameterid
+        LEFT JOIN address ON parameter_rel.addressid=address.serial
+        LEFT JOIN depends ON parameter_rel.dependsid=depends.serial
+      );
 }
 if ($locale eq "en") {
-	$sql = qq(
-		SELECT parameter.serial, parameter.id, parameter.reserved, parameter.name,
-		parameter.desc, parameter.byteidx, parameter.bitidx, parameter.target,
-		address.address, address.length, depends.parameters
-		FROM parameter
-		LEFT JOIN parameter_rel ON parameter.serial = parameter_rel.parameterid
-		LEFT JOIN address ON parameter_rel.addressid=address.serial
-		LEFT JOIN depends ON parameter_rel.dependsid=depends.serial
-	  );
+    $sql = qq(
+        SELECT parameter.serial, parameter.id, parameter.reserved, parameter.name,
+        parameter.desc, parameter.byteidx, parameter.bitidx, parameter.target,
+        address.address, address.length, depends.parameters
+        FROM parameter
+        LEFT JOIN parameter_rel ON parameter.serial = parameter_rel.parameterid
+        LEFT JOIN address ON parameter_rel.addressid=address.serial
+        LEFT JOIN depends ON parameter_rel.dependsid=depends.serial
+      );
 }
 $sth = $dbh->prepare($sql);
 $sth->execute;
 $sth->bind_columns(\$serial, \$id, \$reserved, \$name, \$desc, \$byteidx, \$bitidx, \$target, \$address, \$length, \$depends);
 while ($sth->fetch) {
-	next if ($reserved);
-	$parameter_id{$id}=$serial;
-	$parameter_id{$id}{'name'}=$name;
-	if ($desc) {
-		$parameter_id{$id}{'desc'}="P${id}-$desc";
-	}
-	else {
-		$parameter_id{$id}{'desc'}="P${id}";
-	}
-	$parameter_id{$id}{'byteidx'}=$byteidx;
-	$parameter_id{$id}{'bitidx'}=$bitidx;
-	$parameter_id{$id}{'target'}=$target;
-	$parameter_id{$id}{'address'}=$address;
-	$parameter_id{$id}{'length'}=$length;
-	$parameter_id{$id}{'depends'}=$depends;
-	}
+    next if ($reserved);
+    $parameter_id{$id}=$serial;
+    $parameter_id{$id}{'name'}=$name;
+    if ($desc) {
+        $parameter_id{$id}{'desc'}="P${id}-$desc";
+    }
+    else {
+        $parameter_id{$id}{'desc'}="P${id}";
+    }
+    $parameter_id{$id}{'byteidx'}=$byteidx;
+    $parameter_id{$id}{'bitidx'}=$bitidx;
+    $parameter_id{$id}{'target'}=$target;
+    $parameter_id{$id}{'address'}=$address;
+    $parameter_id{$id}{'length'}=$length;
+    $parameter_id{$id}{'depends'}=$depends;
+    }
 $sth->finish;
 
 # Print out SSM parameters
 foreach $id (sort {$a<=>$b} keys %parameter_id) {
-	if ($parameter_id{$id}{'byteidx'}) {
-		$bytebit = sprintf(' ecubyteindex="%s" ecubit="%s"',
-		$parameter_id{$id}{'byteidx'}, $parameter_id{$id}{'bitidx'})
-	}
-	printf('                <parameter id="P%d" name="%s" desc="%s"%s target="%d">',
-		$id, $parameter_id{$id}{'name'}, $parameter_id{$id}{'desc'}, $bytebit, $parameter_id{$id}{'target'});
-		my $length = '';
-		if ($parameter_id{$id}{'length'} > 1) {
-			$length = " length=\"$parameter_id{$id}{'length'}\"";
-		}
-	if ($parameter_id{$id}{'address'}) {
-		my $addr = $parameter_id{$id}{'address'};
-		if ($addr =~ /:/) {
-			my @addresses = split(/:/, $addr);
-			foreach $addrPart (@addresses) {
-				print "\n                    <address>0x$addrPart</address>";
-			}
-			print "\n";
-		}
-		else {
-			print "\n                    <address${length}>0x$addr</address>\n";
-		}
-	}
-	if ($parameter_id{$id}{'depends'}) {
-		print "\n                    <depends>\n";
-		@dep_ssm = split(/:/, $parameter_id{$id}{'depends'});
-		foreach $depid (@dep_ssm) {
+    if ($parameter_id{$id}{'byteidx'}) {
+        $bytebit = sprintf(' ecubyteindex="%s" ecubit="%s"',
+        $parameter_id{$id}{'byteidx'}, $parameter_id{$id}{'bitidx'})
+    }
+    printf('                <parameter id="P%d" name="%s" desc="%s"%s target="%d">',
+        $id, $parameter_id{$id}{'name'}, $parameter_id{$id}{'desc'}, $bytebit, $parameter_id{$id}{'target'});
+        my $length = '';
+        if ($parameter_id{$id}{'length'} > 1) {
+            $length = " length=\"$parameter_id{$id}{'length'}\"";
+        }
+    if ($parameter_id{$id}{'address'}) {
+        my $addr = $parameter_id{$id}{'address'};
+        if ($addr =~ /:/) {
+            my @addresses = split(/:/, $addr);
+            foreach $addrPart (@addresses) {
+                print "\n                    <address>0x$addrPart</address>";
+            }
+            print "\n";
+        }
+        else {
+            print "\n                    <address${length}>0x$addr</address>\n";
+        }
+    }
+    if ($parameter_id{$id}{'depends'}) {
+        print "\n                    <depends>\n";
+        @dep_ssm = split(/:/, $parameter_id{$id}{'depends'});
+        foreach $depid (@dep_ssm) {
             print "                        <ref parameter=\"P${depid}\" />\n";
-		}
-		print "                    </depends>\n";
-	}
-	print "                    <conversions>\n";
-	get_ssm_conversion_id($parameter_id{$id});
-	print "                    </conversions>\n";
-	print "                </parameter>\n";
-	$bytebit = "";
+        }
+        print "                    </depends>\n";
+    }
+    print "                    <conversions>\n";
+    get_ssm_conversion_id($parameter_id{$id});
+    print "                    </conversions>\n";
+    print "                </parameter>\n";
+    $bytebit = "";
 }
 
 # Dump switches section
@@ -190,91 +189,91 @@ print "            </parameters>\n";
 print "            <switches>\n";
 my $id, $reserved, $name, $desc, $byteidx, $bitidx, $target, $address;
 if ($locale eq "de") {
-	$sql = qq(
-		SELECT switch.serial, switch.id, switch.reserved, switch.name_de,
-		switch.desc_de, switch.byteidx, switch.bitidx,
-		switch.target, address.address
-		FROM switch
-		LEFT JOIN switch_rel ON switch.serial = switch_rel.switchid
-		LEFT JOIN address ON switch_rel.addressid=address.serial
-	  );
+    $sql = qq(
+        SELECT switch.serial, switch.id, switch.reserved, switch.name_de,
+        switch.desc_de, switch.byteidx, switch.bitidx,
+        switch.target, address.address
+        FROM switch
+        LEFT JOIN switch_rel ON switch.serial = switch_rel.switchid
+        LEFT JOIN address ON switch_rel.addressid=address.serial
+      );
 }
 if ($locale eq "en") {
-	$sql = qq(
-		SELECT switch.serial, switch.id, switch.reserved, switch.name,
-		switch.desc, switch.byteidx, switch.bitidx,
-		switch.target, address.address
-		FROM switch
-		LEFT JOIN switch_rel ON switch.serial = switch_rel.switchid
-		LEFT JOIN address ON switch_rel.addressid=address.serial
-	  );
+    $sql = qq(
+        SELECT switch.serial, switch.id, switch.reserved, switch.name,
+        switch.desc, switch.byteidx, switch.bitidx,
+        switch.target, address.address
+        FROM switch
+        LEFT JOIN switch_rel ON switch.serial = switch_rel.switchid
+        LEFT JOIN address ON switch_rel.addressid=address.serial
+      );
 }
 $sth = $dbh->prepare($sql);
 $sth->execute;
 $sth->bind_columns(\$serial, \$id, \$reserved, \$name, \$desc, \$byteidx, \$bitidx, \$target, \$address);
 while ($sth->fetch) {
-	next if ($reserved);
-	$switch_id{$id}=$serial;
-	$switch_id{$id}{'name'}=$name;
-	if ($desc) {
-		$switch_id{$id}{'desc'}="S${id}-$desc";
-	}
-	else {
-		$switch_id{$id}{'desc'}="S${id}";
-	}
-	$switch_id{$id}{'byteidx'}=$byteidx;
-	$switch_id{$id}{'bitidx'}=$bitidx;
-	$switch_id{$id}{'target'}=$target;
-	$switch_id{$id}{'address'}=$address;
-	}
+    next if ($reserved);
+    $switch_id{$id}=$serial;
+    $switch_id{$id}{'name'}=$name;
+    if ($desc) {
+        $switch_id{$id}{'desc'}="S${id}-$desc";
+    }
+    else {
+        $switch_id{$id}{'desc'}="S${id}";
+    }
+    $switch_id{$id}{'byteidx'}=$byteidx;
+    $switch_id{$id}{'bitidx'}=$bitidx;
+    $switch_id{$id}{'target'}=$target;
+    $switch_id{$id}{'address'}=$address;
+    }
 $sth->finish;
 
 # Print out SSM Switches
 foreach $id (sort {$a<=>$b} keys %switch_id) {
-	printf('                <switch id="S%d" name="%s" desc="%s" byte="0x%s" bit="%s" ecubyteindex="%s" target="%d" />',
-		$id, $switch_id{$id}{'name'}, $switch_id{$id}{'desc'},
-		$switch_id{$id}{'address'}, $switch_id{$id}{'bitidx'},
-		$switch_id{$id}{'byteidx'}, $switch_id{$id}{'target'});
-	print "\n";
+    printf('                <switch id="S%d" name="%s" desc="%s" byte="0x%s" bit="%s" ecubyteindex="%s" target="%d" />',
+        $id, $switch_id{$id}{'name'}, $switch_id{$id}{'desc'},
+        $switch_id{$id}{'address'}, $switch_id{$id}{'bitidx'},
+        $switch_id{$id}{'byteidx'}, $switch_id{$id}{'target'});
+    print "\n";
 }
 # DTC Code list
 print "            </switches>\n";
 print "            <dtcodes>\n";
 my $id, $name, $tmpaddr, $memaddr, $bitidx;
 if ($locale eq "de") {
-	$sql = qq(
-		SELECT dtcode.id, dtcode_xlt_de.code_xlt, dtcode.tmpaddr, dtcode.memaddr, dtcode.bitidx
-		FROM dtcode
-		INNER JOIN dtcode_xlt_de ON dtcode.translation_id = dtcode_xlt_de.serial
-		WHERE dtcode.reserved is NULL
-	  );
+    $sql = qq(
+        SELECT dtcode.id, dtcode_xlt_de.code_xlt, dtcode.tmpaddr, dtcode.memaddr, dtcode.bitidx
+        FROM dtcode
+        INNER JOIN dtcode_xlt_de ON dtcode.translation_id = dtcode_xlt_de.serial
+        WHERE dtcode.reserved is NULL
+      );
 }
 if ($locale eq "en") {
-	$sql = qq(
-		SELECT dtcode.id, dtcode.name, dtcode.tmpaddr, dtcode.memaddr, dtcode.bitidx
-		FROM dtcode
-		WHERE dtcode.reserved is NULL
-	  );
+    $sql = qq(
+        SELECT dtcode.id, dtcode.name, dtcode.tmpaddr, dtcode.memaddr, dtcode.bitidx
+        FROM dtcode
+        WHERE dtcode.reserved is NULL
+      );
 }
 $sth = $dbh->prepare($sql);
 $sth->execute;
 $sth->bind_columns(\$id, \$name, \$tmpaddr, \$memaddr, \$bitidx);
 while ($sth->fetch) {
-	$dtcode_id{$id}{'name'}=$name;
-	$dtcode_id{$id}{'tmpaddr'}=$tmpaddr;
-	$dtcode_id{$id}{'memaddr'}=$memaddr;
-	$dtcode_id{$id}{'bitidx'}=$bitidx;
-	}
+    $dtcode_id{$id}{'name'}=$name;
+    $dtcode_id{$id}{'tmpaddr'}=$tmpaddr;
+    $dtcode_id{$id}{'memaddr'}=$memaddr;
+    $dtcode_id{$id}{'bitidx'}=$bitidx;
+    }
 $sth->finish;
 
 # Print out DTC
 foreach $id (sort {$a<=>$b} keys %dtcode_id) {
-	$dtcName = $dtcode_id{$id}{'name'};
-	$dtcName =~ s/&/&amp\;/;
-	printf('                <dtcode id="D%d" name="%s" desc="D%d" tmpaddr="0x%s" memaddr="0x%s" bit="%s" />',
-		$id, $dtcName, $id, $dtcode_id{$id}{'tmpaddr'},
-		$dtcode_id{$id}{'memaddr'}, $dtcode_id{$id}{'bitidx'});
-	print "\n";
+    $dtcName = $dtcode_id{$id}{'name'};
+    $dtcName =~ s/&/&amp\;/;
+    printf('                <dtcode id="D%d" name="%s" desc="D%d" tmpaddr="0x%s" memaddr="0x%s" bit="%s" />',
+        $id, $dtcName, $id, $dtcode_id{$id}{'tmpaddr'},
+        $dtcode_id{$id}{'memaddr'}, $dtcode_id{$id}{'bitidx'});
+    print "\n";
 }
 print "            </dtcodes>\n";
 print "            <ecuparams>\n";
@@ -282,75 +281,75 @@ print "            <ecuparams>\n";
 # ECU parameter list
 my $id, $name, $desc, $ecuid;
 if ($locale eq "de") {
-	$sql = qq(
-		SELECT ecuparam.serial, ecuparam.id, ecuparam.reserved, ecuparam.name_de,
-		ecuparam.desc_de, ecuparam.target
-		FROM ecuparam;
-	);
+    $sql = qq(
+        SELECT ecuparam.serial, ecuparam.id, ecuparam.reserved, ecuparam.name_de,
+        ecuparam.desc_de, ecuparam.target
+        FROM ecuparam;
+    );
 }
 if ($locale eq "en") {
-	$sql = qq(
-		SELECT ecuparam.serial, ecuparam.id, ecuparam.reserved, ecuparam.name,
-		ecuparam.desc, ecuparam.target
-		FROM ecuparam;
-	);
+    $sql = qq(
+        SELECT ecuparam.serial, ecuparam.id, ecuparam.reserved, ecuparam.name,
+        ecuparam.desc, ecuparam.target
+        FROM ecuparam;
+    );
 }
 $sth = $dbh->prepare($sql);
 $sth->execute;
 $sth->bind_columns(\$serial, \$id, \$reserved, \$name, \$desc, \$target);
 while ($sth->fetch) {
-	next if ($reserved);
-	$ecuparam_id{$id}=$serial;
-	$ecuparam_id{$id}{'name'}=$name;
-	if ($desc) {
-		$ecuparam_id{$id}{'desc'}="E${id}-$desc";
-	}
-	else {
-		$ecuparam_id{$id}{'desc'}="E${id}";
-	}
-	$ecuparam_id{$id}{'target'}=$target;
+    next if ($reserved);
+    $ecuparam_id{$id}=$serial;
+    $ecuparam_id{$id}{'name'}=$name;
+    if ($desc) {
+        $ecuparam_id{$id}{'desc'}="E${id}-$desc";
+    }
+    else {
+        $ecuparam_id{$id}{'desc'}="E${id}";
+    }
+    $ecuparam_id{$id}{'target'}=$target;
 }
 $sth->finish;
 &get_address_id;
 foreach $id (sort {$a<=>$b} keys %ecuparam_id) {
-	print "                <ecuparam id=\"E${id}\" name=\"$ecuparam_id{$id}{'name'}\" desc=\"$ecuparam_id{$id}{'desc'}\" target=\"$ecuparam_id{$id}{'target'}\">\n";
-	if ($groupEcuId) {
-		foreach $addrgrp (sort {$a<=>$b} keys %{$address_group{$id}}) {
-			my $length = '';
-			my $bit = '';
-			if ($address_group{$id}{$addrgrp}{'length'} > 1) {
-				$length = " length=\"$address_group{$id}{$addrgrp}{'length'}\"";
-			}
-			if ($address_group{$id}{$addrgrp}{'bit'} != -1) {
-				$bit = " bit=\"$address_group{$id}{$addrgrp}{'bit'}\"";
-			}
-			$ecuidList = $address_group{$id}{$addrgrp}{'ecuidList'};
-			$ecuidList =~ s/,$//;
-			print "                    <ecu id=\"${ecuidList}\">\n";
-			printf("                        <address${length}${bit}>0x%06X</address>\n", $addrgrp);
-			print "                    </ecu>\n";
-		}
-	}
-	else {
-		my @ecuids = get_ecu_id($id);
-		foreach $ecuid (@ecuids) {
-			my $length = '';
-			my $bit = '';
-			if ($address_id{$ecuid}{$id}{'length'} > 1) {
-				$length = " length=\"$address_id{$ecuid}{$id}{'length'}\"";
-			}
-			if ($address_id{$ecuid}{$id}{'bit'} ne '') {
-				$bit = " bit=\"$address_id{$ecuid}{$id}{'bit'}\"";
-			}
-			print "                    <ecu id=\"${ecuid}\">\n";
-			printf("                        <address${length}${bit}>0x%06X</address>\n", $address_id{$ecuid}{$id}{'address'});
-			print "                    </ecu>\n";
-		}
-	}
-	print "                    <conversions>\n";
-	get_conversion_id($ecuparam_id{$id});
-	print "                    </conversions>\n";
-	print "                </ecuparam>\n";
+    print "                <ecuparam id=\"E${id}\" name=\"$ecuparam_id{$id}{'name'}\" desc=\"$ecuparam_id{$id}{'desc'}\" target=\"$ecuparam_id{$id}{'target'}\">\n";
+    if ($groupEcuId) {
+        foreach $addrgrp (sort {$a<=>$b} keys %{$address_group{$id}}) {
+            my $length = '';
+            my $bit = '';
+            if ($address_group{$id}{$addrgrp}{'length'} > 1) {
+                $length = " length=\"$address_group{$id}{$addrgrp}{'length'}\"";
+            }
+            if ($address_group{$id}{$addrgrp}{'bit'} != -1) {
+                $bit = " bit=\"$address_group{$id}{$addrgrp}{'bit'}\"";
+            }
+            $ecuidList = $address_group{$id}{$addrgrp}{'ecuidList'};
+            $ecuidList =~ s/,$//;
+            print "                    <ecu id=\"${ecuidList}\">\n";
+            printf("                        <address${length}${bit}>0x%06X</address>\n", $addrgrp);
+            print "                    </ecu>\n";
+        }
+    }
+    else {
+        my @ecuids = get_ecu_id($id);
+        foreach $ecuid (@ecuids) {
+            my $length = '';
+            my $bit = '';
+            if ($address_id{$ecuid}{$id}{'length'} > 1) {
+                $length = " length=\"$address_id{$ecuid}{$id}{'length'}\"";
+            }
+            if ($address_id{$ecuid}{$id}{'bit'} ne '') {
+                $bit = " bit=\"$address_id{$ecuid}{$id}{'bit'}\"";
+            }
+            print "                    <ecu id=\"${ecuid}\">\n";
+            printf("                        <address${length}${bit}>0x%06X</address>\n", $address_id{$ecuid}{$id}{'address'});
+            print "                    </ecu>\n";
+        }
+    }
+    print "                    <conversions>\n";
+    get_conversion_id($ecuparam_id{$id});
+    print "                    </conversions>\n";
+    print "                </ecuparam>\n";
 }
 &footer;
 
@@ -362,119 +361,119 @@ exit;
 # --- SUBROUTINES ---
 
 sub get_address_id {
-	# get the addresses, length and bit for all of the Extended Parameters by ECU ID
-	my $ecuid, $ecuparam, $address, $length, $bit;
-	my $sql = qq(
-		SELECT ecuid.ecuid, ecuparam.id, address.address, address.length, address.bit
-		FROM ecuid
-		LEFT JOIN ecuparam_rel ON ecuid.serial = ecuparam_rel.ecuidid
-		LEFT JOIN address ON ecuparam_rel.addressid=address.serial
-		LEFT JOIN ecuparam ON ecuparam_rel.ecuparamid=ecuparam.serial
-		ORDER BY ecuid.ecuid
-		);
-	my $sth = $dbh->prepare($sql);
-	$sth->execute();
-	$sth->bind_columns(\$ecuid, \$ecuparam, \$address, \$length, \$bit);
-	while ($sth->fetch) {
-		$address_id{$ecuid}{$ecuparam}{'address'} = $address;
-		$address_id{$ecuid}{$ecuparam}{'length'} = $length;
-		$address_id{$ecuid}{$ecuparam}{'bit'} = $bit;
-		$bit = -1 if ($bit eq '');
-		$address_group{$ecuparam}{hex($address)}{'ecuidList'} .= "${ecuid},";
-		$address_group{$ecuparam}{hex($address)}{'length'} = $length;
-		$address_group{$ecuparam}{hex($address)}{'bit'} = $bit;
-	}
-	return;
+    # get the addresses, length and bit for all of the Extended Parameters by ECU ID
+    my $ecuid, $ecuparam, $address, $length, $bit;
+    my $sql = qq(
+        SELECT ecuid.ecuid, ecuparam.id, address.address, address.length, address.bit
+        FROM ecuid
+        LEFT JOIN ecuparam_rel ON ecuid.serial = ecuparam_rel.ecuidid
+        LEFT JOIN address ON ecuparam_rel.addressid=address.serial
+        LEFT JOIN ecuparam ON ecuparam_rel.ecuparamid=ecuparam.serial
+        ORDER BY ecuid.ecuid
+        );
+    my $sth = $dbh->prepare($sql);
+    $sth->execute();
+    $sth->bind_columns(\$ecuid, \$ecuparam, \$address, \$length, \$bit);
+    while ($sth->fetch) {
+        $address_id{$ecuid}{$ecuparam}{'address'} = $address;
+        $address_id{$ecuid}{$ecuparam}{'length'} = $length;
+        $address_id{$ecuid}{$ecuparam}{'bit'} = $bit;
+        $bit = -1 if ($bit eq '');
+        $address_group{$ecuparam}{hex($address)}{'ecuidList'} .= "${ecuid},";
+        $address_group{$ecuparam}{hex($address)}{'length'} = $length;
+        $address_group{$ecuparam}{hex($address)}{'bit'} = $bit;
+    }
+    return;
 }
 
 sub get_ssm_conversion_id {
-	# get the Conversions for the SSM Parameter serial# pasted to sub
-	my $ssmparamid = shift;
-	my $units, $type, $expression, $format, $min, $max, $step, $std, $imp, $metric, $units_de, $gauge;
-	my $orderby = "conversion.order_$measure";
-	my $sql = qq(
-		SELECT conversion.units, conversion.type, conversion.expression, conversion.format, conversion.min, conversion.max, conversion.step,
-		conversion.order_std, conversion.order_imp, conversion.order_metric, conversion.units_de
-		FROM conversion_rel
-		LEFT JOIN conversion ON conversion_rel.conversionid=conversion.serial
-		WHERE conversion_rel.parameterid = ?
-		ORDER BY $orderby ASC
-		);
-		my $sth = $dbh->prepare($sql);
-	$sth->execute($ssmparamid);
-	$sth->bind_columns(\$units, \$type, \$expression, \$format, \$min, \$max, \$step, \$std, \$imp, \$metric, \$units_de);
-	while ($sth->fetch) {
-		$storage = "storagetype=\"${type}\" " if ($type);
-		$units = $units_de if ($units_de ne '' && $locale eq "de");
-		if ($min) {
-			$gauge = sprintf('gauge_min="%.5g" gauge_max="%.5g" gauge_step="%.5g" ',
-			$min, $max, $step);
-		}
-		print "                        <conversion units=\"${units}\" ${storage}expr=\"${expression}\" format=\"${format}\" ${gauge}/>\n";
-		$storage = "";
-		$gauge = "";
-	}
-	return;
+    # get the Conversions for the SSM Parameter serial# pasted to sub
+    my $ssmparamid = shift;
+    my $units, $type, $expression, $format, $min, $max, $step, $std, $imp, $metric, $units_de, $gauge;
+    my $orderby = "conversion.order_$measure";
+    my $sql = qq(
+        SELECT conversion.units, conversion.type, conversion.expression, conversion.format, conversion.min, conversion.max, conversion.step,
+        conversion.order_std, conversion.order_imp, conversion.order_metric, conversion.units_de
+        FROM conversion_rel
+        LEFT JOIN conversion ON conversion_rel.conversionid=conversion.serial
+        WHERE conversion_rel.parameterid = ?
+        ORDER BY $orderby ASC
+        );
+        my $sth = $dbh->prepare($sql);
+    $sth->execute($ssmparamid);
+    $sth->bind_columns(\$units, \$type, \$expression, \$format, \$min, \$max, \$step, \$std, \$imp, \$metric, \$units_de);
+    while ($sth->fetch) {
+        $storage = "storagetype=\"${type}\" " if ($type);
+        $units = $units_de if ($units_de ne '' && $locale eq "de");
+        if ($min) {
+            $gauge = sprintf('gauge_min="%.5g" gauge_max="%.5g" gauge_step="%.5g" ',
+            $min, $max, $step);
+        }
+        print "                        <conversion units=\"${units}\" ${storage}expr=\"${expression}\" format=\"${format}\" ${gauge}/>\n";
+        $storage = "";
+        $gauge = "";
+    }
+    return;
 }
 
 sub get_conversion_id {
-	# get the Conversions for the Extended Parameter serial# pasted to sub
-	my $ecuparamid = shift;
-	my $units, $type, $expression, $format, $min, $max, $step, $std, $imp, $metric, $units_de, $gauge;
-	my $orderby = "conversion.order_$measure";
-	my $sql = qq(
-		SELECT conversion.units, conversion.type, conversion.expression, conversion.format, conversion.min, conversion.max, conversion.step,
-		conversion.order_std, conversion.order_imp, conversion.order_metric, conversion.units_de
-		FROM conversion_rel
-		LEFT JOIN conversion ON conversion_rel.conversionid=conversion.serial
-		WHERE conversion_rel.ecuparamid = ?
-		ORDER BY $orderby ASC
-		);
-		my $sth = $dbh->prepare($sql);
-	$sth->execute($ecuparamid);
-	$sth->bind_columns(\$units, \$type, \$expression, \$format, \$min, \$max, \$step, \$std, \$imp, \$metric, \$units_de);
-	while ($sth->fetch) {
-		$storage = "storagetype=\"${type}\" " if ($type);
-		$units = $units_de if ($units_de ne '' && $locale eq "de");
-		if ($min) {
-			$gauge = sprintf('gauge_min="%.5g" gauge_max="%.5g" gauge_step="%.5g" ',
-			$min, $max, $step);
-		}
-		print "                        <conversion units=\"${units}\" ${storage}expr=\"${expression}\" format=\"${format}\" ${gauge}/>\n";
-		$storage = "";
-		$gauge = "";
-	}
-	return;
+    # get the Conversions for the Extended Parameter serial# pasted to sub
+    my $ecuparamid = shift;
+    my $units, $type, $expression, $format, $min, $max, $step, $std, $imp, $metric, $units_de, $gauge;
+    my $orderby = "conversion.order_$measure";
+    my $sql = qq(
+        SELECT conversion.units, conversion.type, conversion.expression, conversion.format, conversion.min, conversion.max, conversion.step,
+        conversion.order_std, conversion.order_imp, conversion.order_metric, conversion.units_de
+        FROM conversion_rel
+        LEFT JOIN conversion ON conversion_rel.conversionid=conversion.serial
+        WHERE conversion_rel.ecuparamid = ?
+        ORDER BY $orderby ASC
+        );
+        my $sth = $dbh->prepare($sql);
+    $sth->execute($ecuparamid);
+    $sth->bind_columns(\$units, \$type, \$expression, \$format, \$min, \$max, \$step, \$std, \$imp, \$metric, \$units_de);
+    while ($sth->fetch) {
+        $storage = "storagetype=\"${type}\" " if ($type);
+        $units = $units_de if ($units_de ne '' && $locale eq "de");
+        if ($min) {
+            $gauge = sprintf('gauge_min="%.5g" gauge_max="%.5g" gauge_step="%.5g" ',
+            $min, $max, $step);
+        }
+        print "                        <conversion units=\"${units}\" ${storage}expr=\"${expression}\" format=\"${format}\" ${gauge}/>\n";
+        $storage = "";
+        $gauge = "";
+    }
+    return;
 }
 
 sub get_ecu_id {
-	# get all of the ECU ID for the Extended Parameter serial# pasted to sub
-	my $ecuparam = shift;
-	my $ecuid;
-	my @ecuids;
-	my $sql = qq(
-		SELECT ecuid.ecuid
-		FROM ecuparam
-		LEFT JOIN ecuparam_rel ON ecuparam.serial = ecuparam_rel.ecuparamid
-		LEFT JOIN ecuid ON ecuparam_rel.ecuidid = ecuid.serial
-		WHERE ecuparam.id = ?
-		ORDER BY ecuid.ecuid ASC
-		);
-	my $sth = $dbh->prepare($sql);
-	$sth->execute($ecuparam);
-	$sth->bind_columns(\$ecuid);
+    # get all of the ECU ID for the Extended Parameter serial# pasted to sub
+    my $ecuparam = shift;
+    my $ecuid;
+    my @ecuids;
+    my $sql = qq(
+        SELECT ecuid.ecuid
+        FROM ecuparam
+        LEFT JOIN ecuparam_rel ON ecuparam.serial = ecuparam_rel.ecuparamid
+        LEFT JOIN ecuid ON ecuparam_rel.ecuidid = ecuid.serial
+        WHERE ecuparam.id = ?
+        ORDER BY ecuid.ecuid ASC
+        );
+    my $sth = $dbh->prepare($sql);
+    $sth->execute($ecuparam);
+    $sth->bind_columns(\$ecuid);
 
-	# get the returned rows and create the array
-	while ($sth->fetch) {
-		push(@ecuids, $ecuid);
-	}
+    # get the returned rows and create the array
+    while ($sth->fetch) {
+        push(@ecuids, $ecuid);
+    }
 
-	#debug print out array
-	# for $ecuid (@ecuids) {
-		# print STDERR "ID: $ecuid\n";
-	# }
-	$sth->finish;
-	return @ecuids;
+    #debug print out array
+    # for $ecuid (@ecuids) {
+        # print STDERR "ID: $ecuid\n";
+    # }
+    $sth->finish;
+    return @ecuids;
 }
 
 sub header {
@@ -505,16 +504,16 @@ any damage or injury incurred as a result of these definitions. USE AT YOUR OWN 
 <logger version="$serial">
     <protocols>
         <protocol id="SSM" baud="4800" databits="8" stopbits="1" parity="0" connect_timeout="2000" send_timeout="55">
-			<transports>
-				<transport id="iso9141" name="K-Line" desc="Low speed serial protocol supported up to ~MY2014.">
-					<module id="ecu" address="0x10" desc="Engine Control Unit" tester="0xF0" fastpoll="true"/>
-					<module id="tcu" address="0x18" desc="Transmission Control Unit" tester="0xF0"  fastpoll="false"/>
-				</transport>
-				<transport id="iso15765" name="CAN bus" desc="CAN bus logging ~MY2007+.">
-					<module id="ecu" address="0x000007E8" desc="Engine Control Unit" tester="0x000007E0" />
-					<module id="tcu" address="0x000007E9" desc="Transmission Control Unit" tester="0x000007E1" />
-				</transport>
-			</transports>
+            <transports>
+                <transport id="iso9141" name="K-Line" desc="Low speed serial protocol supported up to ~MY2014.">
+                    <module id="ecu" address="0x10" desc="Engine Control Unit" tester="0xF0" fastpoll="true"/>
+                    <module id="tcu" address="0x18" desc="Transmission Control Unit" tester="0xF0"  fastpoll="false"/>
+                </transport>
+                <transport id="iso15765" name="CAN bus" desc="CAN bus logging ~MY2007+.">
+                    <module id="ecu" address="0x000007E8" desc="Engine Control Unit" tester="0x000007E0" />
+                    <module id="tcu" address="0x000007E9" desc="Transmission Control Unit" tester="0x000007E1" />
+                </transport>
+            </transports>
             <parameters>
 STDPARAM
 }
@@ -524,12 +523,12 @@ print <<FOOTER;
             </ecuparams>
         </protocol>
         <protocol id="OBD" baud="500000" databits="8" stopbits="1" parity="0" connect_timeout="2000" send_timeout="55">
-			<transports>
-				<transport id="iso15765" name="CAN bus" desc="OBD is only supported on CAN bus using a J2534 compatible cable.">
-					<module id="ecu" address="0x000007E8" desc="Engine Control Unit" tester="0x000007E0" />
-					<module id="tcu" address="0x000007E9" desc="Transmission Control Unit" tester="0x000007E1" />
-				</transport>
-			</transports>
+            <transports>
+                <transport id="iso15765" name="CAN bus" desc="OBD is only supported on CAN bus using a J2534 compatible cable.">
+                    <module id="ecu" address="0x000007E8" desc="Engine Control Unit" tester="0x000007E0" />
+                    <module id="tcu" address="0x000007E9" desc="Transmission Control Unit" tester="0x000007E1" />
+                </transport>
+            </transports>
             <parameters>
                 <parameter id="PID1a" name="MIL Status" desc="PID1a-[0 = Off] | [1 = On]" ecubyteindex="8" ecubit="7" target="3">
                     <address bit="31">0x01</address>
@@ -1203,24 +1202,24 @@ print <<FOOTER;
             </parameters>
         </protocol>
         <protocol id="DS2" baud="9600" databits="8" stopbits="1" parity="2" connect_timeout="2000" send_timeout="55">
-			<transports>
-				<transport id="iso9141" name="K-Line" desc="Low speed Diagnosis Bus (D-bus).">
-					<module id="ecu" address="0x12" desc="Engine Control Module" />
-				</transport>
-			</transports>
+            <transports>
+                <transport id="iso9141" name="K-Line" desc="Low speed Diagnosis Bus (D-bus).">
+                    <module id="ecu" address="0x12" desc="Engine Control Module" />
+                </transport>
+            </transports>
             <ecuparams>
 <!-- MS41 Parameters -->
                 <ecuparam id="P8" name="* Engine Speed" desc="P8-(STATUS_MOTORDREHZAHL)" group="0x0B" subgroup="0x03" groupsize="25" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x00</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x00</address>
                     </ecu>
                     <conversions>
                         <conversion units="RPM" storagetype="uint16" expr="x" format="0" gauge_min="0" gauge_max="10000" gauge_step="1000" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="P9" name="* Vehicle Speed" desc="P9-(STATUS_GESCHWINDIGKEIT)" group="0x0B" subgroup="0x03" groupsize="25" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x02</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x02</address>
                     </ecu>
                     <conversions>
                         <conversion units="km/h" expr="x" format="0" gauge_min="0" gauge_max="300" gauge_step="30" />
@@ -1228,24 +1227,24 @@ print <<FOOTER;
                     </conversions>
                 </ecuparam>
                 <ecuparam id="P13" name="* Throttle Position" desc="P13-(STATUS_DROSSELKLAPPEN)" group="0x0B" subgroup="0x03" groupsize="25" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x03</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x03</address>
                     </ecu>
                     <conversions>
                         <conversion units="%" expr="x*100/255" format="0.0" gauge_min="0" gauge_max="100" gauge_step="10" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="E2" name="* Engine Load" desc="E2-(STATUS_LAST)" group="0x0B" subgroup="0x03" groupsize="25" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x04</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x04</address>
                     </ecu>
                     <conversions>
                         <conversion units="mg/stroke" storagetype="uint16" expr="x*0.021" format="0.00" gauge_min="0" gauge_max="1000" gauge_step="100" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="P11" name="* Intake Air Temperature" desc="P11-(STATUS_AN_LUFTTEMPERATUR)" group="0x0B" subgroup="0x03" groupsize="25" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x06</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x06</address>
                     </ecu>
                     <conversions>
                         <conversion units="\xB0C" expr="-0.000000002553359367*x^5+0.000001714258075*x^4-0.0004429255577*x^3+0.05516816161*x^2-3.757117047*x+175.6311846" format="0.0" gauge_min="-20" gauge_max="60" gauge_step="10" />
@@ -1253,8 +1252,8 @@ print <<FOOTER;
                     </conversions>
                 </ecuparam>
                 <ecuparam id="P2" name="* Coolant Temperature" desc="P2-(STATUS_MOTORTEMPERATUR)" group="0x0B" subgroup="0x03" groupsize="25" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x07</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x07</address>
                     </ecu>
                     <conversions>
                         <conversion units="\xB0C" expr="-0.000000002760659115*x^5+0.000001811206109*x^4-0.0004546185504*x^3+0.05495453644*x^2-3.701729653*x+184.7560348" format="0.0" gauge_min="-20" gauge_max="120" gauge_step="20" />
@@ -1262,16 +1261,16 @@ print <<FOOTER;
                     </conversions>
                 </ecuparam>
                 <ecuparam id="P10" name="* Ignition Angle" desc="P10-(STATUS_ZUENDWINKEL)" group="0x0B" subgroup="0x03" groupsize="25" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x08</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x08</address>
                     </ecu>
                     <conversions>
-                        <conversion units="\xB0 BTDC" expr="0.373*x-23.6" format="0.0" gauge_min="-20" gauge_max="50" gauge_step="5" />
+                        <conversion units="\xB0BTDC" expr="0.373*x-23.6" format="0.0" gauge_min="-20" gauge_max="50" gauge_step="5" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="P21" name="* Fuel Injector Pulse Width" desc="P21-(STATUS_EINSPRITZZEIT)" group="0x0B" subgroup="0x03" groupsize="25" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x09</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x09</address>
                     </ecu>
                     <conversions>
                         <conversion units="ms" storagetype="uint16" expr="x*0.004" format="0.000" />
@@ -1279,250 +1278,242 @@ print <<FOOTER;
                     </conversions>
                 </ecuparam>
                 <ecuparam id="E9" name="* Idle Air Control Valve" desc="E9-(STATUS_LL_REGLER)" group="0x0B" subgroup="0x03" groupsize="25" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x0B</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x0D</address>
                     </ecu>
                     <conversions>
                         <conversion units="%" storagetype="uint16" expr="x*0.00153" format="0.00" gauge_min="0" gauge_max="100" gauge_step="10" />
                     </conversions>
                 </ecuparam>
-                <ecuparam id="E10" name="* Parameter 0x0D" desc="E10-INT_IO_E904" group="0x0B" subgroup="0x03" groupsize="25" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x0D</address>
-                    </ecu>
-                    <conversions>
-                        <conversion units="?" storagetype="uint16" expr="x" format="0" gauge_min="0" gauge_max="65535" gauge_step="500" />
-                    </conversions>
-                </ecuparam>
                 <ecuparam id="E11" name="* VANOS Angle" desc="E11-(STATUS_NW_POSITION) Variable Valve angle" group="0x0B" subgroup="0x03" groupsize="25" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x0F</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x0F</address>
                     </ecu>
                     <conversions>
                         <conversion units="KW \xB0" expr="x*0.3745" format="0.00" gauge_min="20" gauge_max="60" gauge_step="10" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="P17" name="* Battery Voltage" desc="P17-Battery Voltage" group="0x0B" subgroup="0x03" groupsize="25" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x10</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x10</address>
                     </ecu>
                     <conversions>
                         <conversion units="VDC" expr="x*0.1" format="0.0" gauge_min="0" gauge_max="25" gauge_step="2" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="E13" name="* Lambda Integrator - Bank 1" desc="E13-(TI_LAM_1)" group="0x0B" subgroup="0x03" groupsize="25" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x11</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x11</address>
                     </ecu>
                     <conversions>
                         <conversion units="%" storagetype="uint16" expr="(x-32768)*100/65536" format="0.00" gauge_min="-32" gauge_max="32" gauge_step="12" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="E14" name="* Lambda Integrator - Bank 2" desc="E14-(TI_LAM_2)" group="0x0B" subgroup="0x03" groupsize="25" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x13</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x13</address>
                     </ecu>
                     <conversions>
                         <conversion units="%" storagetype="uint16" expr="(x-32768)*100/65536" format="0.00" gauge_min="-32" gauge_max="32" gauge_step="12" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="E15" name="* Upstream Lambda Probe Heater - Bank 1" desc="E15-(STATUS_H_SONDE)" group="0x0B" subgroup="0x03" groupsize="25" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x15</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x15</address>
                     </ecu>
                     <conversions>
                         <conversion units="%" expr="x*100/255" format="0.0" gauge_min="0" gauge_max="100" gauge_step="10" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="E16" name="* Upstream Lambda Probe Heater - Bank 2" desc="E16-(STATUS_H_SONDE_2)" group="0x0B" subgroup="0x03" groupsize="25" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x16</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x16</address>
                     </ecu>
                     <conversions>
                         <conversion units="%" expr="x*100/255" format="0.0" gauge_min="0" gauge_max="100" gauge_step="10" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="E17" name="* Downstream Lambda Probe Heater - Bank 1" desc="E17-(STATUS_LS_VKAT_HEIZUNG_TV_1)" group="0x0B" subgroup="0x03" groupsize="25" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x17</address>
+                    <ecu id="1406464,1437806,1440176">
+                        <address>0x17</address>
                     </ecu>
                     <conversions>
                         <conversion units="%" expr="x*100/255" format="0.0" gauge_min="0" gauge_max="100" gauge_step="10" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="E18" name="* Downstream Lambda Probe Heater - Bank 2" desc="E18-(STATUS_LS_VKAT_HEIZUNG_TV_2)" group="0x0B" subgroup="0x03" groupsize="25" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x18</address>
+                    <ecu id="1406464,1437806,1440176">
+                        <address>0x18</address>
                     </ecu>
                     <conversions>
                         <conversion units="%" expr="x*100/255" format="0.0" gauge_min="0" gauge_max="100" gauge_step="10" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="E19" name="** Lambda Additive Adaptation - Bank 1" desc="E19-(TI_AD_ADD_1)" group="0x0B" subgroup="0x91" groupsize="8" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x00</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x00</address>
                     </ecu>
                     <conversions>
                         <conversion units="ms" storagetype="uint16" expr="(x-32768)*.004" format="0.00" gauge_min="-5" gauge_max="5" gauge_step="1" />
-						<conversion units="\xB5s" storagetype="uint16" expr="(x-32768)*4" format="0" gauge_min="-5000" gauge_max="5000" gauge_step="1000" />
+                        <conversion units="\xB5s" storagetype="uint16" expr="(x-32768)*4" format="0" gauge_min="-5000" gauge_max="5000" gauge_step="1000" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="E20" name="** Lambda Additive Adaptation - Bank 2" desc="E20-(TI_AD_ADD_2)" group="0x0B" subgroup="0x91" groupsize="8" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x02</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x02</address>
                     </ecu>
                     <conversions>
                         <conversion units="ms" storagetype="uint16" expr="(x-32768)*.004" format="0.00" gauge_min="-5" gauge_max="5" gauge_step="1" />
-						<conversion units="\xB5s" storagetype="uint16" expr="(x-32768)*4" format="0" gauge_min="-5000" gauge_max="5000" gauge_step="1000" />
+                        <conversion units="\xB5s" storagetype="uint16" expr="(x-32768)*4" format="0" gauge_min="-5000" gauge_max="5000" gauge_step="1000" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="E21" name="** Lambda Multiplicative Adaptation - Bank 1" desc="E21-(TI_AD_FAC_1)" group="0x0B" subgroup="0x91" groupsize="8" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x04</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x04</address>
                     </ecu>
                     <conversions>
                         <conversion units="%" storagetype="uint16" expr="(x-32768)*100/65536" format="0.00" gauge_min="-32" gauge_max="32" gauge_step="12" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="E22" name="** Lambda Multiplicative Adaptation - Bank 2" desc="E22-(TI_AD_FAC_2)" group="0x0B" subgroup="0x91" groupsize="8" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x06</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x06</address>
                     </ecu>
                     <conversions>
                         <conversion units="%" storagetype="uint16" expr="(x-32768)*100/65536" format="0.00" gauge_min="-32" gauge_max="32" gauge_step="12" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="E23" name="Throttle Position Adaptation*" desc="E23-(TPS_AD_MMV_IS)" group="0x0B" subgroup="0x92" groupsize="4" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x00</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x00</address>
                     </ecu>
                     <conversions>
                         <conversion units="%" storagetype="int16" expr="x*1.526E-3" format="0.00" gauge_min="-50" gauge_max="50" gauge_step="10" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="E24" name="Knock Retard - Global" desc="E24-Global correction applied to total timing" group="0x0B" subgroup="0x93" groupsize="1" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x00</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x00</address>
                     </ecu>
                     <conversions>
                         <conversion units="\xB0 Cor" storagetype="uint8" expr="(x-128)*0.375" format="0.00" gauge_min="-50" gauge_max="50" gauge_step="10" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="E99" name="Knock Adaptation Table 1 Index**" desc="E99-Knock Adaptation Table 1 Index Direct RAM Read used by Adaptation display tool" group="0x06" subgroup="0x00" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x00D840</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x00D840</address>
                     </ecu>
                     <conversions>
                         <conversion units="\xB0 Cor" storagetype="uint8" endian="little" expr="(x-128)*0.375" format="0.000" gauge_min="-48" gauge_max="0" gauge_step="5" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="E100" name="Air Intake Temperature Sensor*" desc="E100-Air Intake Temperature Sensor" group="0x0B" subgroup="0x020E" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x000000</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x000000</address>
                     </ecu>
                     <conversions>
                         <conversion units="VDC" storagetype="uint16" expr="x*0.01952" format="0.00" gauge_min="0" gauge_max="5" gauge_step="0.5" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="E101" name="STATUS_LS_VKAT_SIGNAL_1*" desc="E101-STATUS_LS_VKAT_SIGNAL_1" group="0x0B" subgroup="0x020E" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x000001</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x000001</address>
                     </ecu>
                     <conversions>
                         <conversion units="VDC" storagetype="uint16" expr="x*0.01952" format="0.00" gauge_min="0" gauge_max="5" gauge_step="0.5" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="E102" name="STATUS_LS_VKAT_SIGNAL_2*" desc="E102-STATUS_LS_VKAT_SIGNAL_2" group="0x0B" subgroup="0x020E" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x000002</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x000002</address>
                     </ecu>
                     <conversions>
                         <conversion units="VDC" storagetype="uint16" expr="x*0.01952" format="0.00" gauge_min="0" gauge_max="5" gauge_step="0.5" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="E103" name="Engine Coolant Temperature Sensor*" desc="E103-Engine Coolant Temperature Sensor" group="0x0B" subgroup="0x020E" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x000003</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x000003</address>
                     </ecu>
                     <conversions>
                         <conversion units="VDC" storagetype="uint16" expr="x*0.00488" format="0.00" gauge_min="0" gauge_max="5" gauge_step="0.5" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="P19" name="Throttle Position Volts*" desc="P19-Throttle Position Volts" group="0x0B" subgroup="0x020E" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x000004</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x000004</address>
                     </ecu>
                     <conversions>
                         <conversion units="VDC" storagetype="uint16" expr="x*0.01952" format="0.00" gauge_min="0" gauge_max="5" gauge_step="0.5" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="E105" name="STATUS_ZSR*" desc="E105-STATUS_ZSR" group="0x0B" subgroup="0x020E" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x000005</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x000005</address>
                     </ecu>
                     <conversions>
                         <conversion units="VDC" storagetype="uint16" expr="x*0.01952" format="0.00" gauge_min="0" gauge_max="5" gauge_step="0.5" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="P18" name="Mass Airflow Volts*" desc="P18-Mass Airflow Volts" group="0x0B" subgroup="0x020E" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x000006</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x000006</address>
                     </ecu>
                     <conversions>
                         <conversion units="VDC" storagetype="uint16" expr="x*0.01952" format="0.00" gauge_min="0" gauge_max="5" gauge_step="0.5" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="E107" name="Battery Voltage Sensor*" desc="E107-Battery Voltage Sensor" group="0x0B" subgroup="0x020E" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x000007</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x000007</address>
                     </ecu>
                     <conversions>
                         <conversion units="VDC" storagetype="uint16" expr="x*0.1" format="0.0" gauge_min="0" gauge_max="20" gauge_step="2" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="E123" name="STATUS_KLOPF_ADC1*" desc="E123-STATUS_KLOPF_ADC1" group="0x0B" subgroup="0x020E" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x000017</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x000017</address>
                     </ecu>
                     <conversions>
                         <conversion units="VDC" storagetype="uint16" expr="x*0.01952" format="0.00" gauge_min="0" gauge_max="5" gauge_step="0.5" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="E124" name="STATUS_KLOPF_ADC2*" desc="E124-STATUS_KLOPF_ADC2" group="0x0B" subgroup="0x020E" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x000018</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x000018</address>
                     </ecu>
                     <conversions>
                         <conversion units="VDC" storagetype="uint16" expr="x*0.01952" format="0.00" gauge_min="0" gauge_max="5" gauge_step="0.5" />
                     </conversions>
                 </ecuparam>
-                <ecuparam id="E125" name="STATUS_VLS_DOWN_2_BAS*" desc="E125-STATUS_VLS_DOWN_2_BAS" group="0x0B" subgroup="0x020E" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x000019</address>
+                <ecuparam id="E125" name="STATUS_VLS_DOWN_1_BAS*" desc="E125-STATUS_VLS_DOWN_1_BAS" group="0x0B" subgroup="0x020E" target="1">
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x000019</address>
                     </ecu>
                     <conversions>
                         <conversion units="VDC" storagetype="uint16" expr="x*0.01952" format="0.00" gauge_min="0" gauge_max="5" gauge_step="0.5" />
                     </conversions>
                 </ecuparam>
-                <ecuparam id="E126" name="STATUS_VLS_DOWN_1_BAS*" desc="E126-STATUS_VLS_DOWN_1_BAS" group="0x0B" subgroup="0x020E" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x00001A</address>
+                <ecuparam id="E126" name="STATUS_VLS_DOWN_2_BAS*" desc="E126-STATUS_VLS_DOWN_2_BAS" group="0x0B" subgroup="0x020E" target="1">
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x00001A</address>
                     </ecu>
                     <conversions>
                         <conversion units="VDC" storagetype="uint16" expr="x*0.01952" format="0.00" gauge_min="0" gauge_max="5" gauge_step="0.5" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="E127" name="Tank Pressure Sensor*" desc="E127-Tank Pressure Sensor" group="0x0B" subgroup="0x020E" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x00001B</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x00001B</address>
                     </ecu>
                     <conversions>
                         <conversion units="VDC" storagetype="uint16" expr="x*0.00488" format="0.00" gauge_min="0" gauge_max="5" gauge_step="0.5" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="P12" name="Mass Airflow**" desc="P12-Mass Airflow Direct RAM Read" group="0x06" subgroup="0x00" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x00DA34</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x00DA34</address>
                     </ecu>
                     <conversions>
                         <conversion units="kg/h" storagetype="uint16" endian="little" expr="x*0.25" format="0.00" gauge_min="0" gauge_max="65" gauge_step="6" />
@@ -1530,112 +1521,112 @@ print <<FOOTER;
                     </conversions>
                 </ecuparam>
                 <ecuparam id="E201" name="TAST_LL_STELLER**" desc="E201-TAST_LL_STELLER Direct RAM Read" group="0x06" subgroup="0x00" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x00DA38</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x00DA38</address>
                     </ecu>
                     <conversions>
                         <conversion units="?" storagetype="uint16" endian="little" expr="x" format="0.00" gauge_min="0" gauge_max="65" gauge_step="6" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="E202" name="STATUS_TEV_TAST**" desc="E202-STATUS_TEV_TAST Direct RAM Read" group="0x06" subgroup="0x00" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x00DA56</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x00DA56</address>
                     </ecu>
                     <conversions>
                         <conversion units="?" storagetype="uint8" endian="little" expr="x" format="0.00" gauge_min="0" gauge_max="65" gauge_step="6" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="E203" name="STATUS_FLAG_BELADUNG**" desc="E203-STATUS_FLAG_BELADUNG Direct RAM Read" group="0x06" subgroup="0x00" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x00DA57</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x00DA57</address>
                     </ecu>
                     <conversions>
                         <conversion units="?" storagetype="uint8" endian="little" expr="x" format="0.00" gauge_min="0" gauge_max="65" gauge_step="6" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="E204" name="STATUS_K_MW_1**" desc="E204-Result knock sensor increment cyl1 Direct RAM Read" group="0x06" subgroup="0x00" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x00DA65</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x00DA65</address>
                     </ecu>
                     <conversions>
                         <conversion units="?" storagetype="uint8" endian="little" expr="x" format="0" gauge_min="0" gauge_max="255" gauge_step="25" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="E205" name="STATUS_K_MW_2**" desc="E205-Result knock sensor increment cyl2 Direct RAM Read" group="0x06" subgroup="0x00" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x00DA68</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x00DA68</address>
                     </ecu>
                     <conversions>
                         <conversion units="?" storagetype="uint8" endian="little" expr="x" format="0" gauge_min="0" gauge_max="255" gauge_step="25" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="E206" name="STATUS_K_MW_3**" desc="E206-Result knock sensor increment cyl3 Direct RAM Read" group="0x06" subgroup="0x00" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x00DA67</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x00DA67</address>
                     </ecu>
                     <conversions>
                         <conversion units="?" storagetype="uint8" endian="little" expr="x" format="0" gauge_min="0" gauge_max="255" gauge_step="25" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="E207" name="STATUS_K_MW_4**" desc="E207-Result knock sensor increment cyl4 Direct RAM Read" group="0x06" subgroup="0x00" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x00DA69</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x00DA69</address>
                     </ecu>
                     <conversions>
                         <conversion units="?" storagetype="uint8" endian="little" expr="x" format="0" gauge_min="0" gauge_max="255" gauge_step="25" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="E208" name="STATUS_K_MW_5**" desc="E208-Result knock sensor increment cyl5 Direct RAM Read" group="0x06" subgroup="0x00" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x00DA66</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x00DA66</address>
                     </ecu>
                     <conversions>
                         <conversion units="?" storagetype="uint8" endian="little" expr="x" format="0" gauge_min="0" gauge_max="255" gauge_step="25" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="E209" name="STATUS_K_MW_6**" desc="E209-Result knock sensor increment cyl6 Direct RAM Read" group="0x06" subgroup="0x00" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x00DA64</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x00DA64</address>
                     </ecu>
                     <conversions>
                         <conversion units="?" storagetype="uint8" endian="little" expr="x" format="0" gauge_min="0" gauge_max="255" gauge_step="25" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="E210" name="STATUS_VANOS_VERSTELLWINKEL**" desc="E210-STATUS_VANOS_VERSTELLWINKEL Direct RAM Read" group="0x06" subgroup="0x00" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x00DAA4</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x00DAA4</address>
                     </ecu>
                     <conversions>
                         <conversion units="?" storagetype="uint8" endian="little" expr="x" format="0" gauge_min="0" gauge_max="255" gauge_step="25" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="E211" name="STATUS_GEBERRAD_ADAPTION**" desc="E211-STATUS_GEBERRAD_ADAPTION Direct RAM Read" group="0x06" subgroup="0x00" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x00DB0F</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x00DB0F</address>
                     </ecu>
                     <conversions>
                         <conversion units="?" storagetype="uint8" endian="little" expr="x" format="0" gauge_min="0" gauge_max="255" gauge_step="25" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="E212" name="STATUS_TANK_DIFF_DRUCK**" desc="E212-STATUS_TANK_DIFF_DRUCK Direct RAM Read" group="0x06" subgroup="0x00" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x00DB10</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x00DB10</address>
                     </ecu>
                     <conversions>
                         <conversion units="?" storagetype="uint16" endian="little" expr="x" format="0.00" gauge_min="0" gauge_max="65535" gauge_step="500" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="E213" name="STATUS_TIMER_TE_DIAG**" desc="E213-STATUS_TIMER_TE_DIAG Direct RAM Read" group="0x06" subgroup="0x00" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x00DB14</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x00DB14</address>
                     </ecu>
                     <conversions>
                         <conversion units="?" storagetype="uint16" endian="little" expr="x" format="0.00" gauge_min="0" gauge_max="65535" gauge_step="500" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="E214" name="STATUS_LAMBDA_COUNTER**" desc="E214-STATUS_LAMBDA_COUNTER Direct RAM Read" group="0x06" subgroup="0x00" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x00EDE6</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x00EDE6</address>
                     </ecu>
                     <conversions>
                         <conversion units="?" storagetype="uint16" endian="little" expr="x" format="0.00" gauge_min="0" gauge_max="65535" gauge_step="500" />
@@ -1643,7 +1634,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="E215" name="STATUS_TIMER_TL_SP_DTE**" desc="E215-STATUS_TIMER_TL_SP_DTE Direct RAM Read" group="0x06" subgroup="0x00" target="1">
                     <ecu id="1406464">
-						<address>0x00F576</address>
+                        <address>0x00F576</address>
                     </ecu>
                     <conversions>
                         <conversion units="?" storagetype="uint8" endian="little" expr="x" format="0" gauge_min="0" gauge_max="255" gauge_step="25" />
@@ -1651,23 +1642,23 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="E216" name="STATUS_TIMER_NB_SP_DTE**" desc="E216-STATUS_TIMER_NB_SP_DTE Direct RAM Read" group="0x06" subgroup="0x00" target="1">
                     <ecu id="1406464">
-						<address>0x00F578</address>
+                        <address>0x00F578</address>
                     </ecu>
                     <conversions>
                         <conversion units="?" storagetype="uint8" endian="little" expr="x" format="0" gauge_min="0" gauge_max="255" gauge_step="25" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="E217" name="Knock Retard - Current" desc="E217-Current average correction applied to total timing" group="0x06" subgroup="0x00" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x00E98D</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x00E98D</address>
                     </ecu>
                     <conversions>
                         <conversion units="\xB0 Cor" storagetype="uint8" expr="(x-128)*0.375" format="0.00" gauge_min="-50" gauge_max="50" gauge_step="10" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="P24" name="Atmospheric Pressure**" desc="P24-A temporary fake entry for the Dyno tab" group="0x0B" subgroup="0x03" groupsize="25" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x00</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x00</address>
                     </ecu>
                     <conversions>
                         <conversion units="psi" expr="101.325*37/255" format="0.00" gauge_min="0" gauge_max="20" gauge_step="2" />
@@ -1680,160 +1671,160 @@ print <<FOOTER;
                 </ecuparam>
 <!-- Switches -->
                 <ecuparam id="S0" name="SW - Compressor Signal" desc="S0-S_KO" group="0x0B" subgroup="0x04" groupsize="3" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address bit="7">0x00</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address bit="7">0x00</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="S1" name="SW - Air Conditioning (High load)" desc="S1-S_AC" group="0x0B" subgroup="0x04" groupsize="3" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address bit="6">0x00</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address bit="6">0x00</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="S2" name="SW - Theft Deterrent System" desc="S2-S_DWA" group="0x0B" subgroup="0x04" groupsize="3" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address bit="5">0x00</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address bit="5">0x00</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="S3" name="SW - Torque Reduction Request - Gear-Shift" desc="S3-S_GS" group="0x0B" subgroup="0x04" groupsize="3" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address bit="4">0x00</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address bit="4">0x00</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="S4" name="SW - Engine Drag Torque Reduction" desc="S4-S_MSR" group="0x0B" subgroup="0x04" groupsize="3" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address bit="3">0x00</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address bit="3">0x00</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="S5" name="SW - Torque Reduction Request" desc="S5-S_ASC" group="0x0B" subgroup="0x04" groupsize="3" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address bit="2">0x00</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address bit="2">0x00</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="S6" name="SW - Full Load" desc="S6-S_VL" group="0x0B" subgroup="0x04" groupsize="3" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x00</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x00</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="BitWise(3,x,1)/3" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="S7" name="SW - Part Load" desc="S7-Part load" group="0x0B" subgroup="0x04" groupsize="3" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x00</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x00</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="BitWise(2,x,1)/2" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="S8" name="SW - Closed Throttle" desc="S8-S_LL" group="0x0B" subgroup="0x04" groupsize="3" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address>0x00</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address>0x00</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="BitWise(1,x,1)" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="S9" name="SW - S_REG2" desc="S9-S_REG2" group="0x0B" subgroup="0x04" groupsize="3" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address bit="7">0x01</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address bit="7">0x01</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="S10" name="SW - S_REG1" desc="S10-S_REG1" group="0x0B" subgroup="0x04" groupsize="3" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address bit="6">0x01</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address bit="6">0x01</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="S11" name="SW - Trailing Throttle Fuel Cut Off" desc="S11-LV_PUC" group="0x0B" subgroup="0x04" groupsize="3" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address bit="5">0x01</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address bit="5">0x01</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="S12" name="SW - Acceleration Enrichment" desc="S12-LV_AE" group="0x0B" subgroup="0x04" groupsize="3" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address bit="4">0x01</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address bit="4">0x01</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="S13" name="SW - Engine Operating State (Start)" desc="S13-LV_ST" group="0x0B" subgroup="0x04" groupsize="3" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address bit="3">0x01</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address bit="3">0x01</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="S14" name="SW - AT Drive engaged" desc="S14-S_FS" group="0x0B" subgroup="0x04" groupsize="3" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address bit="2">0x01</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address bit="2">0x01</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="S15" name="SW - Generator" desc="S15-S_GE" group="0x0B" subgroup="0x04" groupsize="3" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address bit="1">0x01</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address bit="1">0x01</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="S16" name="SW - S_CAN" desc="S16-S_CAN" group="0x0B" subgroup="0x04" groupsize="3" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address bit="0">0x01</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address bit="0">0x01</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="S17" name="SW - Secondary Air Valve" desc="S17-S_SLV" group="0x0B" subgroup="0x04" groupsize="3" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address bit="7">0x02</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address bit="7">0x02</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="S18" name="SW - Secondary Air Pump" desc="S18-S_SLP" group="0x0B" subgroup="0x04" groupsize="3" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address bit="6">0x02</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address bit="6">0x02</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="S19" name="SW - Tank Ventilation Valve" desc="S19-S_AAV" group="0x0B" subgroup="0x04" groupsize="3" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address bit="5">0x02</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address bit="5">0x02</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -1841,40 +1832,1009 @@ print <<FOOTER;
                 </ecuparam>
 <!--                <ecuparam id="S20" name="Rear Defogger Switch" desc="S20">  Reserved as Logger control switch -->
                 <ecuparam id="S21" name="SW - S_RUN_LOSSES" desc="S21-S_RUN_LOSSES" group="0x0B" subgroup="0x04" groupsize="3" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address bit="4">0x02</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address bit="4">0x02</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="S22" name="SW - Exhaust Flap" desc="S22-S_KLAPPE" group="0x0B" subgroup="0x04" groupsize="3" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address bit="3">0x02</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address bit="3">0x02</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="S23" name="SW - S_VANOS" desc="S23-S_VANOS" group="0x0B" subgroup="0x04" groupsize="3" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address bit="2">0x02</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address bit="2">0x02</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="S24" name="SW - Compressor Relay" desc="S24-S_KO_REL" group="0x0B" subgroup="0x04" groupsize="3" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address bit="1">0x02</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address bit="1">0x02</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="S25" name="SW - Electric Fuel Pump" desc="S25-S_EKP" group="0x0B" subgroup="0x04" groupsize="3" target="1">
-                    <ecu id="1406464,1429861,1437806,1440176">
-						<address bit="0">0x02</address>
+                    <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
+                        <address bit="0">0x02</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+<!-- MS42 Parameters -->
+                <ecuparam id="P8" name="* Engine Speed" desc="P8-(STATUS_MOTORDREHZAHL)" group="0x0B" subgroup="0x03" groupsize="34" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                  <address>0x00</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="RPM" storagetype="uint16" expr="x" format="0" gauge_min="0" gauge_max="10000" gauge_step="1000" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="P9" name="* Vehicle Speed" desc="P9-(STATUS_GESCHWINDIGKEIT)" group="0x0B" subgroup="0x03" groupsize="34" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                  <address>0x02</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="km/h" storagetype="uint8" expr="x" format="0" gauge_min="0" gauge_max="255" gauge_step="20" />
+                        <conversion units="mph" storagetype="uint8" expr="x*0.621371192" format="0.0" gauge_min="0" gauge_max="200" gauge_step="25" />
+                    </conversions>
+                </ecuparam>
+               <ecuparam id="P13" name="* Throttle Position pedal" desc="P13" group="0x0B" subgroup="0x03" groupsize="34" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                  <address>0x03</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="\xB0TPS" storagetype="uint8" expr="x*100/256" format="0.0" gauge_min="0" gauge_max="120" gauge_step="10" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="P30" name="* Throttle Position actual" desc="P30" group="0x0B" subgroup="0x03" groupsize="34" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                  <address>0x04</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="\xB0TPS" storagetype="uint8" expr="x*100/256" format="0.0" gauge_min="0" gauge_max="120" gauge_step="10" />
+                    </conversions>
+                </ecuparam>
+              <ecuparam id="P12" name="* Mass Airflow" desc="P12-Mass Airflow" group="0x0B" subgroup="0x03" groupsize="34" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                  <address>0x05</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="kg/h" storagetype="uint16" expr="x*0.25" format="0.00" gauge_min="0" gauge_max="65" gauge_step="6" />
+                        <conversion units="g/sec" storagetype="uint16" expr="x*0.06944445" format="0.00" gauge_min="0" gauge_max="65" gauge_step="6" />
+                    </conversions>
+                </ecuparam>
+              <ecuparam id="P11" name="* Intake Air Temperature" desc="P11-(STATUS_AN_LUFTTEMPERATUR)" group="0x0B" subgroup="0x03" groupsize="34" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                  <address>0x07</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="\xB0C" storagetype="uint8" expr="x*0.75-48" format="0.0" gauge_min="-40" gauge_max="120" gauge_step="10" />
+                        <conversion units="\xB0F" storagetype="uint8" expr="32+9*(x*0.75-48)/5" format="0.0" gauge_min="0" gauge_max="140" gauge_step="20" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="P2" name="* Coolant Temperature" desc="P2-(STATUS_MOTORTEMPERATUR)" group="0x0B" subgroup="0x03" groupsize="34" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                  <address>0x08</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="\xB0C" storagetype="uint8" expr="x*0.75-48" format="0.0" gauge_min="-40" gauge_max="120" gauge_step="10" />
+                        <conversion units="\xB0F" storagetype="uint8" expr="32+9*(x*0.75-48)/5" format="0.0" gauge_min="0" gauge_max="140" gauge_step="20" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="E11" name="* Oil Temperature" desc="E11-Oil Temperature" group="0x0B" subgroup="0x03" groupsize="34" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                  <address>0x09</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="\xB0C" storagetype="uint8" expr="x*0.79607843-48" format="0.0" gauge_min="-40" gauge_max="120" gauge_step="10" />
+                        <conversion units="\xB0F" storagetype="uint8" expr="32+9*(x*0.79607843-48)/5" format="0.0" gauge_min="0" gauge_max="140" gauge_step="20" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="E101" name="* Radiator outlet temperature" desc="E11-Radiator outlet temperature" group="0x0B" subgroup="0x03" groupsize="34" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                  <address>0x0A</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="\xB0C" storagetype="uint8" expr="x*0.75-48" format="0.0" gauge_min="-40" gauge_max="120" gauge_step="10" />
+                        <conversion units="\xB0F" storagetype="uint8" expr="32+9*(x*0.75-48)/5" format="0.0" gauge_min="0" gauge_max="140" gauge_step="20" />
+                    </conversions>
+                </ecuparam>
+              <ecuparam id="P10" name="* Ignition Angle" desc="P10-(STATUS_ZUENDWINKEL)" group="0x0B" subgroup="0x03" groupsize="34" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                  <address>0x0B</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="\xB0 CRK" storagetype="uint8" expr="-0.375*x+72" format="0.00" gauge_min="-40" gauge_max="50" gauge_step="5" />
+                    </conversions>
+                </ecuparam>
+               <ecuparam id="P21" name="* Fuel Injector Pulse Width" desc="P21-(STATUS_EINSPRITZZEIT)" group="0x0B" subgroup="0x03" groupsize="34" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                  <address>0x0C</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="ms" storagetype="uint16" expr="x*0.004" format="0.000" />
+                        <conversion units="\xB5s" storagetype="uint16" expr="x*0.4" format="0" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="P22" name="* Idle speed controller" desc="Idle speed controller" group="0x0B" subgroup="0x03" groupsize="34" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                  <address>0x0E</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="%" storagetype="int16" expr="x*0.001526" format="0.000" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="P23" name="* Idle speed duty cycle" desc="Idle speed duty cycle" group="0x0B" subgroup="0x03" groupsize="34" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                  <address>0x10</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="%" storagetype="uint16" expr="x*0.001526" format="0.000" />
+                        </conversions>
+                </ecuparam>
+                <ecuparam id="E23" name="* Throttle adaptation" desc="Throttle adaptation" group="0x0B" subgroup="0x03" groupsize="34" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x13</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="V" storagetype="uint8" expr="x*.001562" format="0.00" gauge_min="-5" gauge_max="5" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="P17" name="* Battery voltage" desc="Battery Voltage" group="0x0B" subgroup="0x03" groupsize="34" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x14</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="V" storagetype="uint8"  expr="x*.1" format="0.0" gauge_min="0" gauge_max="25" gauge_step="1" />
+                    </conversions>
+                </ecuparam>         
+                <ecuparam id="E13" name="* Lambda Integrator - Bank 1" desc="E13-(TI_AD_FAC_1 or LTFT 1)" group="0x0B" subgroup="0x03" groupsize="34" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x15</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="%" storagetype="uint16" expr="0.0015259*x-50" format="0.00" gauge_min="-32" gauge_max="32" gauge_step="12" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="E14" name="* Lambda Integrator - Bank 2" desc="E14-(TI_AD_FAC_2 or LTFT 2)" group="0x0B" subgroup="0x03" groupsize="34" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x17</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="%" storagetype="uint16" expr="0.0015259*x-50" format="0.00" gauge_min="-32" gauge_max="32" gauge_step="12" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="E2210" name="* Lambda pre cat heating 1" desc="pre cat heating 1" group="0x0B" subgroup="0x03" groupsize="34" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x19</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="%" storagetype="uint8" expr="x*100/256" format="0" gauge_min="0" gauge_max="100" gauge_step="20" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="E2220" name="* Lambda pre cat heating 2" desc="pre cat heating 2" group="0x0B" subgroup="0x03" groupsize="34" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x1A</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="%" storagetype="uint8" expr="x*100/256" format="0" gauge_min="0" gauge_max="100" gauge_step="20" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="E2230" name="* Lambda post cat heating 1" desc="post cat heating 1" group="0x0B" subgroup="0x03" groupsize="34" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x1B</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="%" storagetype="uint8" expr="x*100/256" format="0" gauge_min="0" gauge_max="100" gauge_step="20" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="E2240" name="* Lambda post cat heating 2" desc="post cat heating 2" group="0x0B" subgroup="0x03" groupsize="34" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x1C</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="%" storagetype="uint8" expr="x*100/256" format="0" gauge_min="0" gauge_max="100" gauge_step="20" />
+                    </conversions>
+                </ecuparam>
+               <ecuparam id="E2" name="* Engine Load" desc="E2-(STATUS_LAST)" group="0x0B" subgroup="0x03" groupsize="34" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                  <address>0x1D</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="mg/stroke" storagetype="uint16" expr="x*0.02119" format="0.00" gauge_min="0" gauge_max="1000" gauge_step="100" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="P108" name="* Knock sensor 1" desc="P108" group="0x0B" subgroup="0x03" groupsize="34" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x1F</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="V" storagetype="uint8" expr="x*0.01952" format="0.00" gauge_min="0" gauge_max="10" gauge_step="2" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="P110" name="* Knock sensor 2" desc="P110" group="0x0B" subgroup="0x03" groupsize="34" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x20</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="V" storagetype="uint8" expr="x*0.01952" format="0.00" gauge_min="0" gauge_max="10" gauge_step="2" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="P112" name="* Electric fan" desc="P112" group="0x0B" subgroup="0x03" groupsize="34" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x21</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="%" storagetype="uint8" expr="x" format="0" gauge_min="0" gauge_max="100" gauge_step="20" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="E19" name="** Lambda Additive Adaptation - Bank 1" desc="E19-(TI_AD_ADD_1)" group="0x0B" subgroup="0x91" groupsize="10" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x00</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="ms" storagetype="uint16" expr="(x-32768)*.004" format="0.00" gauge_min="-5" gauge_max="5" gauge_step="1" />
+                        <conversion units="\xB5s" storagetype="uint16" expr="(x-32768)*4" format="0" gauge_min="-5000" gauge_max="5000" gauge_step="1000" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="E20" name="** Lambda Additive Adaptation - Bank 2" desc="E20-(TI_AD_ADD_2)" group="0x0B" subgroup="0x91" groupsize="10" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x04</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="ms" storagetype="uint16" expr="(x-32768)*.004" format="0.00" gauge_min="-5" gauge_max="5" gauge_step="1" />
+                        <conversion units="\xB5s" storagetype="uint16" expr="(x-32768)*4" format="0" gauge_min="-5000" gauge_max="5000" gauge_step="1000" />
+                    </conversions>
+                </ecuparam>             
+                <ecuparam id="E21" name="** Lambda Multiplicative Adaptation - Bank 1" desc="E21-(TI_AD_FAC_1)" group="0x0B" subgroup="0x91" groupsize="10" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x02</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="%" storagetype="uint16" expr="(x-32768)*100/65536" format="0.00" gauge_min="-32" gauge_max="32" gauge_step="12" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="E22" name="** Lambda Multiplicative Adaptation - Bank 2" desc="E22-(TI_AD_FAC_2)" group="0x0B" subgroup="0x91" groupsize="10" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x06</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="%" storagetype="uint16" expr="(x-32768)*100/65536" format="0.00" gauge_min="-32" gauge_max="32" gauge_step="12" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="P113" name="** Intake vanos actual" desc="P112" group="0x0B" subgroup="0x90" groupsize="13" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x00</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="\xB0 CRK" storagetype="uint8" expr="(x*.375)+60" format="0.00" gauge_min="80" gauge_max="120" gauge_step="20" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="P114" name="** Intake vanos target" desc="P112" group="0x0B" subgroup="0x90" groupsize="13" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x01</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="\xB0 CRK" storagetype="uint8" expr="(x*.375)+60" format="0.00" gauge_min="80" gauge_max="120" gauge_step="10" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="P115" name="** Intake vanos ref position" desc="P112" group="0x0B" subgroup="0x90" groupsize="13" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x02</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="\xB0 CRK" storagetype="uint8" expr="(x*.375)+60" format="0.00" gauge_min="80" gauge_max="120" gauge_step="10" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="P116" name="** Intake vanos edge adaptation" desc="P112" group="0x0B" subgroup="0x90" groupsize="13" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x03</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="\xB0 CRK" storagetype="uint8" expr="(x*.375)+60" format="0.00" gauge_min="80" gauge_max="120" gauge_step="20" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="P117" name="** Intake vanos ?? adaptation" desc="P112" group="0x0B" subgroup="0x90" groupsize="13" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x04</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="\xB0 CRK" storagetype="uint8" expr="(x*.375)+60" format="0.00" gauge_min="80" gauge_max="120" gauge_step="20" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="P118" name="** Intake vanos HALTE_TV adaptation" desc="P112" group="0x0B" subgroup="0x90" groupsize="13" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x05</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="\xB0 CRK" storagetype="uint8" expr="(x*.375)+60" format="0.00" gauge_min="80" gauge_max="120" gauge_step="20" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="P119" name="** Exhaust vanos actual" desc="P112" group="0x0B" subgroup="0x90" groupsize="13" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x06</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="\xB0 CRK" storagetype="uint8" expr="-(x*0.375+60)" format="0.00" gauge_min="-105" gauge_max="-85" gauge_step="20" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="P1200" name="** Exhaust vanos target" desc="P112" group="0x0B" subgroup="0x90" groupsize="13" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x07</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="\xB0 CRK" storagetype="uint8" expr="-(x*0.375+60)" format="0.00" gauge_min="-105" gauge_max="-85" gauge_step="20" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="P1210" name="** Exhaust vanos ref position" desc="P112" group="0x0B" subgroup="0x90" groupsize="13" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x08</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="\xB0 CRK" storagetype="uint8" expr="-(x*0.375+60)" format="0.00" gauge_min="-105" gauge_max="-85" gauge_step="20" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="P1220" name="** Exhaust vanos edge adaptation" desc="P112" group="0x0B" subgroup="0x90" groupsize="13" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x09</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="\xB0 CRK" storagetype="uint8" expr="-(x*0.375+60)" format="0.00" gauge_min="-105" gauge_max="-85" gauge_step="20" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="P121" name="** Exhaust vanos ?? adaptation" desc="P112" group="0x0B" subgroup="0x90" groupsize="13" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x0A</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="\xB0 CRK" storagetype="uint8" expr="x*0.375-60" format="0.00" gauge_min="-105" gauge_max="-85" gauge_step="20" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="P1231" name="** Exhaust vanos HALTE_TV adaptation" desc="P112" group="0x0B" subgroup="0x90" groupsize="13" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x0B</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="\xB0 CRK" storagetype="uint8" expr="x*0.375-60" format="0.00" gauge_min="-105" gauge_max="-85" gauge_step="20" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="P1233" name="** Solenoid temp model" desc="P112" group="0x0B" subgroup="0x90" groupsize="13" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x0C</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="\xB0C" storagetype="uint8" expr="x*0.5" format="0" gauge_min="0" gauge_max="100" gauge_step="20" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="E99" name="Knock Adaptation Table 1 Index **" desc="E99-Knock Adaptation Table 1 Index Direct RAM Read used by Adaptation display tool" group="0x06" subgroup="0x00" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x0E000</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="\xB0 Cor" storagetype="int8" endian="little" expr="-0.375*x" format="0.000" gauge_min="-48" gauge_max="0" gauge_step="5" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="E24" name="Knock Retard - Global" desc="E24-Global correction applied to total timing" group="0x0B" subgroup="0x93" groupsize="1" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x00</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="\xB0 Cor" storagetype="uint8" endian="little" expr="-0.375*x" format="0.000" gauge_min="-48" gauge_max="0" gauge_step="5" />
+                    </conversions>
+                </ecuparam>
+                  <ecuparam id="E217" name="Knock Retard - Current" desc="E217-Current average correction applied to total timing" group="0x06" subgroup="0x00" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x00c472</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="\xB0 Cor" storagetype="int8" expr="-0.375*x" format="0.00" gauge_min="-50" gauge_max="50" gauge_step="10" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="E98" name="Air Intake Temperature Sensor*" desc="E100-Air Intake Temperature Sensor" group="0x0B" subgroup="0x020E" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x000000</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="VDC" storagetype="uint16" expr="x*0.00488" format="0.00" gauge_min="0" gauge_max="5" gauge_step="0.5" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="E990" name="STATUS_LS_VKAT_SIGNAL_1*" desc="E101-STATUS_LS_VKAT_SIGNAL_1" group="0x0B" subgroup="0x020E" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x000001</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="VDC" storagetype="uint16" expr="x*0.00488" format="0.00" gauge_min="0" gauge_max="5" gauge_step="0.5" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="E102" name="STATUS_LS_VKAT_SIGNAL_2*" desc="E102-STATUS_LS_VKAT_SIGNAL_2" group="0x0B" subgroup="0x020E" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x000002</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="VDC" storagetype="uint16" expr="x*0.00488" format="0.00" gauge_min="0" gauge_max="5" gauge_step="0.5" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="E103" name="Engine Coolant Temperature Sensor*" desc="E103-Engine Coolant Temperature Sensor" group="0x0B" subgroup="0x020E" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x000003</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="VDC" storagetype="uint16" expr="x*0.00488" format="0.00" gauge_min="0" gauge_max="5" gauge_step="0.5" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="E104" name="ADC Input 0x04*" desc="E104" group="0x0B" subgroup="0x020E" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x000004</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="VDC" storagetype="uint16" expr="x*0.00488" format="0.00" gauge_min="0" gauge_max="5" gauge_step="0.5" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="E105" name="Oil Temperature Sensor Volts*" desc="E105-Oil Temperature Sensor Volts" group="0x0B" subgroup="0x020E" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x000005</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="VDC" storagetype="uint16" expr="x*0.00488" format="0.00" gauge_min="0" gauge_max="5" gauge_step="0.5" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="P18" name="Mass Airflow Volts*" desc="P18-Mass Airflow Volts" group="0x0B" subgroup="0x020E" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x000006</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="VDC" storagetype="uint16" expr="x*0.00488" format="0.00" gauge_min="0" gauge_max="5" gauge_step="0.5" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="E107" name="Battery Voltage Sensor 1*" desc="E107-Battery Voltage Sensor" group="0x0B" subgroup="0x020E" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x000007</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="VDC" storagetype="uint16" expr="x*0.025" format="0.0" gauge_min="0" gauge_max="20" gauge_step="2" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="E108" name="Accelerator Pedal Request Volts*" desc="E108-Battery Voltage Sensor" group="0x0B" subgroup="0x020E" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x000008</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="VDC" storagetype="uint16" expr="x*0.025" format="0.0" gauge_min="0" gauge_max="20" gauge_step="2" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="E109" name="Accelerator Pedal Plausibility Volts*" desc="E109" group="0x0B" subgroup="0x020E" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x000009</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="VDC" storagetype="uint16" expr="x*0.00488" format="0.00" gauge_min="0" gauge_max="5" gauge_step="0.5" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="P19" name="Throttle Position Volts*" desc="P19-Throttle 1 Position Volts" group="0x0B" subgroup="0x020E" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x00000A</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="VDC" storagetype="uint16" expr="x*0.00488" format="0.00" gauge_min="0" gauge_max="5" gauge_step="0.5" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="P111" name="Throttle Plausibility Volts*" desc="P110-Throttle 2 Position Volts" group="0x0B" subgroup="0x020E" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x00000B</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="VDC" storagetype="uint16" expr="x*0.00488" format="0.00" gauge_min="0" gauge_max="5" gauge_step="0.5" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="E120" name="ADC Input 0x10*" desc="E120" group="0x0B" subgroup="0x020E" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x000010</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="VDC" storagetype="uint16" expr="x*0.00488" format="0.00" gauge_min="0" gauge_max="5" gauge_step="0.5" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="E127" name="Knock Sensor 1 Volts*" desc="E127" group="0x0B" subgroup="0x020E" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x000017</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="VDC" storagetype="uint16" expr="x*0.00488" format="0.00" gauge_min="0" gauge_max="5" gauge_step="0.5" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="E128" name="Knock Sensor 2 Volts*" desc="E128" group="0x0B" subgroup="0x020E" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x000018</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="VDC" storagetype="uint16" expr="x*0.00488" format="0.00" gauge_min="0" gauge_max="5" gauge_step="0.5" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="E129" name="STATUS_VLS_DOWN_2_BAS*" desc="E129-STATUS_VLS_DOWN_2_BAS" group="0x0B" subgroup="0x020E" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x000019</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="VDC" storagetype="uint16" expr="x*0.00488" format="0.00" gauge_min="0" gauge_max="5" gauge_step="0.5" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="E130" name="STATUS_VLS_DOWN_1_BAS*" desc="E130-STATUS_VLS_DOWN_1_BAS" group="0x0B" subgroup="0x020E" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x00001A</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="VDC" storagetype="uint16" expr="x*0.00488" format="0.00" gauge_min="0" gauge_max="5" gauge_step="0.5" />
+                    </conversions>
+               </ecuparam>
+                <ecuparam id="P24" name="Atmospheric Pressure**" desc="P24-A temporary fake entry for the Dyno tab" group="0x0B" subgroup="0x03" groupsize="34" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x00</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="psi" expr="101.325*37/255" format="0.00" gauge_min="0" gauge_max="20" gauge_step="2" />
+                        <conversion units="kPa" expr="101.325" format="0" gauge_min="0" gauge_max="255" gauge_step="20" />
+                        <conversion units="hPa" expr="101.325*10" format="0" gauge_min="0" gauge_max="1500" gauge_step="100" />
+                        <conversion units="bar" expr="101.325/100" format="0.000" gauge_min="0" gauge_max="1.5" gauge_step="0.1" />
+                        <conversion units="inHg" expr="101.325*0.2953" format="0.00" gauge_min="-40" gauge_max="60" gauge_step="10" />
+                        <conversion units="mmHg" expr="101.325*7.5" format="0" gauge_min="-1000" gauge_max="2000" gauge_step="300" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="E211" name="STATUS_GEBERRAD_ADAPTION**" desc="E211-STATUS_GEBERRAD_ADAPTION Direct RAM Read" group="0x06" subgroup="0x00" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x00FD56</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="?" storagetype="uint8" endian="little" expr="x" format="0" gauge_min="0" gauge_max="255" gauge_step="25" />
+                    </conversions>
+                </ecuparam>
+               <ecuparam id="E204" name="STATUS_K_MW_1**" desc="E204-Result knock sensor increment cyl1 Direct RAM Read" group="0x06" subgroup="0x00" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x00e542</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="?" storagetype="uint8" endian="little" expr="x" format="0" gauge_min="0" gauge_max="255" gauge_step="25" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="E205" name="STATUS_K_MW_2**" desc="E205-Result knock sensor increment cyl2 Direct RAM Read" group="0x06" subgroup="0x00" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x00e546</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="?" storagetype="uint8" endian="little" expr="x" format="0" gauge_min="0" gauge_max="255" gauge_step="25" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="E206" name="STATUS_K_MW_3**" desc="E206-Result knock sensor increment cyl3 Direct RAM Read" group="0x06" subgroup="0x00" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x00e544</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="?" storagetype="uint8" endian="little" expr="x" format="0" gauge_min="0" gauge_max="255" gauge_step="25" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="E207" name="STATUS_K_MW_4**" desc="E207-Result knock sensor increment cyl4 Direct RAM Read" group="0x06" subgroup="0x00" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x00e547</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="?" storagetype="uint8" endian="little" expr="x" format="0" gauge_min="0" gauge_max="255" gauge_step="25" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="E208" name="STATUS_K_MW_5**" desc="E208-Result knock sensor increment cyl5 Direct RAM Read" group="0x06" subgroup="0x00" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x00e543</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="?" storagetype="uint8" endian="little" expr="x" format="0" gauge_min="0" gauge_max="255" gauge_step="25" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="E209" name="STATUS_K_MW_6**" desc="E209-Result knock sensor increment cyl6 Direct RAM Read" group="0x06" subgroup="0x00" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x00e545</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="?" storagetype="uint8" endian="little" expr="x" format="0" gauge_min="0" gauge_max="255" gauge_step="25" />
+                    </conversions>
+                </ecuparam>
+<!-- Switches -->
+                <ecuparam id="S0" name="SW - Byte 0 Bit 7" desc="S0" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address bit="7">0x00</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="S1" name="SW - Byte 0 Bit 6" desc="S1" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address bit="6">0x00</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="S2" name="SW - Byte 0 Bit 5" desc="S2" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address bit="5">0x00</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="S3" name="SW - Byte 0 Bit 4" desc="S3" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address bit="4">0x00</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="S4" name="SW - Byte 0 Bit 3" desc="S4" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address bit="3">0x00</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="S5" name="SW - Byte 0 Bit 2" desc="S5" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address bit="2">0x00</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="S6" name="SW - Full Load" desc="S6-S_VL" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x00</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="BitWise(3,x,1)/3" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="S7" name="SW - Part Load" desc="S7-Part load" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x00</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="BitWise(2,x,1)/2" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="S8" name="SW - Closed Throttle" desc="S8-S_LL" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address>0x00</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="BitWise(1,x,1)" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="S9" name="SW - Byte 1 Bit 7" desc="S9" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address bit="7">0x01</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="S10" name="SW - Byte 1 Bit 6" desc="S10" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address bit="6">0x01</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="S11" name="SW - Byte 1 Bit 5" desc="S11" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address bit="5">0x01</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="S12" name="SW - Byte 1 Bit 4" desc="S12" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address bit="4">0x01</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="S13" name="SW - Byte 1 Bit 3" desc="S13" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address bit="3">0x01</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="S14" name="SW - Byte 1 Bit 2" desc="S14" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address bit="2">0x01</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="S15" name="SW - Byte 1 Bit 1" desc="S15" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address bit="1">0x01</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="S16" name="SW - Byte 1 Bit 0" desc="S16" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address bit="0">0x01</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="S17" name="SW - Byte 2 Bit 7" desc="S17" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address bit="7">0x02</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="S18" name="SW - Byte 2 Bit 6" desc="S18" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address bit="6">0x02</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="S19" name="SW - Byte 2 Bit 5" desc="S19" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address bit="5">0x02</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+<!--                <ecuparam id="S20" name="Rear Defogger Switch" desc="S20">  Reserved as Logger control switch -->
+                <ecuparam id="S21" name="SW - Byte 2 Bit 4" desc="S21" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address bit="4">0x02</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="S22" name="SW - Byte 2 Bit 3" desc="S22" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address bit="3">0x02</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="S23" name="SW - Byte 2 Bit 2" desc="S23" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address bit="2">0x02</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="S24" name="SW - Byte 2 Bit 1" desc="S24" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address bit="1">0x02</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="S25" name="SW - Byte 2 Bit 0" desc="S25" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address bit="0">0x02</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="S26" name="SW - Byte 3 Bit 7" desc="S26" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address bit="7">0x03</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="S27" name="SW - Byte 3 Bit 6" desc="S27" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address bit="6">0x03</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="S28" name="SW - Byte 3 Bit 5" desc="S28" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address bit="5">0x03</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="S29" name="SW - Byte 3 Bit 4" desc="S29" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address bit="4">0x03</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="S30" name="SW - Byte 3 Bit 3" desc="S30" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address bit="3">0x03</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="S31" name="SW - Byte 3 Bit 2" desc="S31" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address bit="2">0x03</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="S32" name="SW - Byte 3 Bit 1" desc="S32" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address bit="1">0x03</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="S33" name="SW - Byte 3 Bit 0" desc="S33" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address bit="0">0x03</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="S34" name="SW - Byte 4 Bit 7" desc="S34" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address bit="7">0x04</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="S35" name="SW - Byte 4 Bit 6" desc="S35" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address bit="6">0x04</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="S36" name="SW - Byte 4 Bit 5" desc="S36" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address bit="5">0x04</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="S37" name="SW - Byte 4 Bit 4" desc="S37" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address bit="4">0x04</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="S38" name="SW - Byte 4 Bit 3" desc="S38" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address bit="3">0x04</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="S39" name="SW - Byte 4 Bit 2" desc="S39" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address bit="2">0x04</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="S40" name="SW - Byte 4 Bit 1" desc="S40" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address bit="1">0x04</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="S41" name="SW - Byte 4 Bit 0" desc="S41" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address bit="0">0x04</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="S42" name="SW - Byte 5 Bit 7" desc="S42" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address bit="7">0x05</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="S43" name="SW - Byte 5 Bit 6" desc="S43" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address bit="6">0x05</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="S44" name="SW - Byte 5 Bit 5" desc="S44" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address bit="5">0x05</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="S45" name="SW - Byte 5 Bit 4" desc="S45" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address bit="4">0x05</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="S46" name="SW - Byte 5 Bit 3" desc="S46" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address bit="3">0x05</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="S47" name="SW - Byte 5 Bit 2" desc="S47" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address bit="2">0x05</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="S48" name="SW - Byte 5 Bit 1" desc="S48" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address bit="1">0x05</address>
+                    </ecu>
+                    <conversions>
+                        <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
+                    </conversions>
+                </ecuparam>
+                <ecuparam id="S49" name="SW - Byte 5 Bit 0" desc="S49" group="0x0B" subgroup="0x04" groupsize="6" target="1">
+                    <ecu id="1429764,1430844,7526753,7500255">
+                        <address bit="0">0x05</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -1883,7 +2843,7 @@ print <<FOOTER;
 <!-- MS43 Parameters -->
                 <ecuparam id="P8" name="* Engine Speed" desc="P8-(STATUS_MOTORDREHZAHL)" group="0x0B" subgroup="0x03" groupsize="41" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x00</address>
+                        <address>0x00</address>
                     </ecu>
                     <conversions>
                         <conversion units="RPM" storagetype="uint16" expr="x" format="0" gauge_min="0" gauge_max="10000" gauge_step="1000" />
@@ -1891,7 +2851,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="P9" name="* Vehicle Speed" desc="P9-(STATUS_GESCHWINDIGKEIT)" group="0x0B" subgroup="0x03" groupsize="41" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x02</address>
+                        <address>0x02</address>
                     </ecu>
                     <conversions>
                         <conversion units="km/h" expr="x" format="0" gauge_min="0" gauge_max="300" gauge_step="30" />
@@ -1900,7 +2860,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="P96" name="* Accelerator Position" desc="P96" group="0x0B" subgroup="0x03" groupsize="41" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x03</address>
+                        <address>0x03</address>
                     </ecu>
                     <conversions>
                         <conversion units="\xB0TPS" storagetype="uint16" expr="0.0018310547*x" format="0.0" gauge_min="0" gauge_max="120" gauge_step="10" />
@@ -1908,7 +2868,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="P13" name="* Throttle Position" desc="P13" group="0x0B" subgroup="0x03" groupsize="41" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x05</address>
+                        <address>0x05</address>
                     </ecu>
                     <conversions>
                         <conversion units="\xB0TPS" storagetype="uint16" expr="0.0018310547*x" format="0.0" gauge_min="0" gauge_max="120" gauge_step="10" />
@@ -1916,7 +2876,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="P12" name="* Mass Airflow" desc="P12-Mass Airflow" group="0x0B" subgroup="0x03" groupsize="41" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x07</address>
+                        <address>0x07</address>
                     </ecu>
                     <conversions>
                         <conversion units="kg/h" storagetype="uint16" expr="x*0.25" format="0.00" gauge_min="0" gauge_max="65" gauge_step="6" />
@@ -1925,7 +2885,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="P11" name="* Intake Air Temperature" desc="P11-(STATUS_AN_LUFTTEMPERATUR)" group="0x0B" subgroup="0x03" groupsize="41" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x09</address>
+                        <address>0x09</address>
                     </ecu>
                     <conversions>
                         <conversion units="\xB0C" expr="x*0.75-48" format="0.0" gauge_min="-20" gauge_max="60" gauge_step="10" />
@@ -1934,7 +2894,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="P2" name="* Coolant Temperature" desc="P2-(STATUS_MOTORTEMPERATUR)" group="0x0B" subgroup="0x03" groupsize="41" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x0A</address>
+                        <address>0x0A</address>
                     </ecu>
                     <conversions>
                         <conversion units="\xB0C" expr="x*0.75-48" format="0.0" gauge_min="-20" gauge_max="60" gauge_step="10" />
@@ -1943,7 +2903,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="E11" name="* Oil Temperature" desc="E11-Oil Temperature" group="0x0B" subgroup="0x03" groupsize="41" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x0B</address>
+                        <address>0x0B</address>
                     </ecu>
                     <conversions>
                         <conversion units="\xB0C" expr="x*0.79607843-48" format="0.0" gauge_min="-20" gauge_max="60" gauge_step="10" />
@@ -1952,7 +2912,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="P98" name="* Parameter 0x0C (Temperature ?)" desc="P98" group="0x0B" subgroup="0x03" groupsize="41" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x0C</address>
+                        <address>0x0C</address>
                     </ecu>
                     <conversions>
                         <conversion units="?" expr="x" format="0" gauge_min="0" gauge_max="255" gauge_step="20" />
@@ -1960,7 +2920,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="P10" name="* Ignition Angle" desc="P10-(STATUS_ZUENDWINKEL)" group="0x0B" subgroup="0x03" groupsize="41" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x0D</address>
+                        <address>0x0D</address>
                     </ecu>
                     <conversions>
                         <conversion units="\xB0 CRK" expr="-0.375*x+72" format="0.0" gauge_min="-20" gauge_max="50" gauge_step="5" />
@@ -1968,7 +2928,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="P99" name="* Parameter 0x0E" desc="P99" group="0x0B" subgroup="0x03" groupsize="41" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x0E</address>
+                        <address>0x0E</address>
                     </ecu>
                     <conversions>
                         <conversion units="?" storagetype="uint16" expr="x" format="0" gauge_min="0" gauge_max="65535" gauge_step="6500" />
@@ -1976,7 +2936,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="P100" name="* Parameter 0x10" desc="P100" group="0x0B" subgroup="0x03" groupsize="41" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x10</address>
+                        <address>0x10</address>
                     </ecu>
                     <conversions>
                         <conversion units="?" storagetype="uint16" expr="x" format="0" gauge_min="0" gauge_max="65535" gauge_step="6500" />
@@ -1984,7 +2944,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="P101" name="* Parameter 0x12" desc="P101" group="0x0B" subgroup="0x03" groupsize="41" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x12</address>
+                        <address>0x12</address>
                     </ecu>
                     <conversions>
                         <conversion units="?" storagetype="uint16" expr="x" format="0" gauge_min="0" gauge_max="65535" gauge_step="6500" />
@@ -1992,7 +2952,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="P102" name="* Ignition Key Voltage" desc="P102-KL 15" group="0x0B" subgroup="0x03" groupsize="41" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x14</address>
+                        <address>0x14</address>
                     </ecu>
                     <conversions>
                         <conversion units="VDC" expr="x*0.1" format="0.0" gauge_min="0" gauge_max="25" gauge_step="2" />
@@ -2000,7 +2960,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="P103" name="* Parameter 0x15" desc="P103" group="0x0B" subgroup="0x03" groupsize="41" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x15</address>
+                        <address>0x15</address>
                     </ecu>
                     <conversions>
                         <conversion units="?" expr="x" format="0" gauge_min="0" gauge_max="255" gauge_step="20" />
@@ -2008,7 +2968,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="P17" name="* Battery Voltage" desc="P17-Battery Voltage" group="0x0B" subgroup="0x03" groupsize="41" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x16</address>
+                        <address>0x16</address>
                     </ecu>
                     <conversions>
                         <conversion units="VDC" expr="x*0.1" format="0.0" gauge_min="0" gauge_max="25" gauge_step="2" />
@@ -2016,7 +2976,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="E13" name="* Lambda Integrator - Bank 1" desc="E13-(TI_LAM_1)" group="0x0B" subgroup="0x03" groupsize="41" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x17</address>
+                        <address>0x17</address>
                     </ecu>
                     <conversions>
                         <conversion units="%" storagetype="uint16" expr="0.0015258789*x-50" format="0.00" gauge_min="-50" gauge_max="50" gauge_step="12" />
@@ -2024,7 +2984,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="E14" name="* Lambda Integrator - Bank 2" desc="E14-(TI_LAM_2)" group="0x0B" subgroup="0x03" groupsize="41" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x19</address>
+                        <address>0x19</address>
                     </ecu>
                     <conversions>
                         <conversion units="%" storagetype="uint16" expr="0.0015258789*x-50" format="0.00" gauge_min="-50" gauge_max="50" gauge_step="12" />
@@ -2032,7 +2992,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="P104" name="* Parameter 0x1B" desc="P104" group="0x0B" subgroup="0x03" groupsize="41" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x1B</address>
+                        <address>0x1B</address>
                     </ecu>
                     <conversions>
                         <conversion units="?" expr="x" format="0" gauge_min="0" gauge_max="255" gauge_step="20" />
@@ -2040,7 +3000,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="P105" name="* Parameter 0x1C" desc="P105" group="0x0B" subgroup="0x03" groupsize="41" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x1C</address>
+                        <address>0x1C</address>
                     </ecu>
                     <conversions>
                         <conversion units="?" expr="x" format="0" gauge_min="0" gauge_max="255" gauge_step="20" />
@@ -2048,7 +3008,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="P106" name="* Parameter 0x1D" desc="P106" group="0x0B" subgroup="0x03" groupsize="41" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x1D</address>
+                        <address>0x1D</address>
                     </ecu>
                     <conversions>
                         <conversion units="?" expr="x" format="0" gauge_min="0" gauge_max="255" gauge_step="20" />
@@ -2056,7 +3016,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="P107" name="* Parameter 0x1E" desc="P107" group="0x0B" subgroup="0x03" groupsize="41" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x1E</address>
+                        <address>0x1E</address>
                     </ecu>
                     <conversions>
                         <conversion units="?" expr="x" format="0" gauge_min="0" gauge_max="255" gauge_step="20" />
@@ -2064,7 +3024,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="E2" name="* Engine Load" desc="E2-(STATUS_LAST)" group="0x0B" subgroup="0x03" groupsize="41" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x1F</address>
+                        <address>0x1F</address>
                     </ecu>
                     <conversions>
                         <conversion units="mg/stroke" storagetype="uint16" expr="x*0.021" format="0.00" gauge_min="0" gauge_max="1000" gauge_step="100" />
@@ -2072,7 +3032,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="P108" name="* Parameter 0x21" desc="P108" group="0x0B" subgroup="0x03" groupsize="41" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x21</address>
+                        <address>0x21</address>
                     </ecu>
                     <conversions>
                         <conversion units="?" storagetype="uint16" expr="x" format="0" gauge_min="0" gauge_max="65535" gauge_step="6500" />
@@ -2080,7 +3040,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="P110" name="* Parameter 0x23" desc="P110" group="0x0B" subgroup="0x03" groupsize="41" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x23</address>
+                        <address>0x23</address>
                     </ecu>
                     <conversions>
                         <conversion units="?" storagetype="uint16" expr="x" format="0" gauge_min="0" gauge_max="65535" gauge_step="6500" />
@@ -2088,7 +3048,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="P112" name="* Parameter 0x25" desc="P112" group="0x0B" subgroup="0x03" groupsize="41" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x25</address>
+                        <address>0x25</address>
                     </ecu>
                     <conversions>
                         <conversion units="?" expr="x" format="0" gauge_min="0" gauge_max="255" gauge_step="20" />
@@ -2096,7 +3056,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="P113" name="* Parameter 0x26" desc="P113" group="0x0B" subgroup="0x03" groupsize="41" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x26</address>
+                        <address>0x26</address>
                     </ecu>
                     <conversions>
                         <conversion units="?" storagetype="uint16" expr="x" format="0" gauge_min="0" gauge_max="65535" gauge_step="6500" />
@@ -2104,7 +3064,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="P114" name="* Parameter 0x28" desc="P114" group="0x0B" subgroup="0x03" groupsize="41" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x28</address>
+                        <address>0x28</address>
                     </ecu>
                     <conversions>
                         <conversion units="?" expr="x" format="0" gauge_min="0" gauge_max="255" gauge_step="20" />
@@ -2112,7 +3072,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="E99" name="Knock Adaptation Table 1 Index**" desc="E99-Knock Adaptation Table 1 Index Direct RAM Read used by Adaptation display tool" group="0x06" subgroup="0x00" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x040218</address>
+                        <address>0x040218</address>
                     </ecu>
                     <conversions>
                         <conversion units="\xB0 Cor" storagetype="uint8" endian="little" expr="(x-128)*0.375" format="0.000" gauge_min="-48" gauge_max="0" gauge_step="5" />
@@ -2120,25 +3080,25 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="E19" name="** Lambda Additive Adaptation - Bank 1" desc="E19-(TI_AD_ADD_1)" group="0x0B" subgroup="0x91" groupsize="11" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x01</address>
+                        <address>0x01</address>
                     </ecu>
                     <conversions>
                         <conversion units="ms" storagetype="uint16" expr="(x-32768)*.004" format="0.00" gauge_min="-5" gauge_max="5" gauge_step="1" />
-						<conversion units="\xB5s" storagetype="uint16" expr="(x-32768)*4" format="0" gauge_min="-5000" gauge_max="5000" gauge_step="1000" />
+                        <conversion units="\xB5s" storagetype="uint16" expr="(x-32768)*4" format="0" gauge_min="-5000" gauge_max="5000" gauge_step="1000" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="E20" name="** Lambda Additive Adaptation - Bank 2" desc="E20-(TI_AD_ADD_2)" group="0x0B" subgroup="0x91" groupsize="11" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x05</address>
+                        <address>0x05</address>
                     </ecu>
                     <conversions>
                         <conversion units="ms" storagetype="uint16" expr="(x-32768)*.004" format="0.00" gauge_min="-5" gauge_max="5" gauge_step="1" />
-						<conversion units="\xB5s" storagetype="uint16" expr="(x-32768)*4" format="0" gauge_min="-5000" gauge_max="5000" gauge_step="1000" />
+                        <conversion units="\xB5s" storagetype="uint16" expr="(x-32768)*4" format="0" gauge_min="-5000" gauge_max="5000" gauge_step="1000" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="E21" name="** Lambda Multiplicative Adaptation - Bank 1" desc="E21-(TI_AD_FAC_1 or LTFT 1)" group="0x0B" subgroup="0x91" groupsize="11" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x03</address>
+                        <address>0x03</address>
                     </ecu>
                     <conversions>
                         <conversion units="%" storagetype="uint16" expr="(x-32768)*100/65536" format="0.00" gauge_min="-32" gauge_max="32" gauge_step="12" />
@@ -2146,7 +3106,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="E22" name="** Lambda Multiplicative Adaptation - Bank 2" desc="E22-(TI_AD_FAC_2 or LTFT 2)" group="0x0B" subgroup="0x91" groupsize="11" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x07</address>
+                        <address>0x07</address>
                     </ecu>
                     <conversions>
                         <conversion units="%" storagetype="uint16" expr="(x-32768)*100/65536" format="0.00" gauge_min="-32" gauge_max="32" gauge_step="12" />
@@ -2154,7 +3114,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="E24" name="Knock Retard - Global" desc="E24-Global correction applied to total timing" group="0x0B" subgroup="0x93" groupsize="2" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x00</address>
+                        <address>0x00</address>
                     </ecu>
                     <conversions>
                         <conversion units="\xB0 Cor" storagetype="uint16" expr="x/65536" format="0.00" gauge_min="-50" gauge_max="50" gauge_step="10" />
@@ -2162,7 +3122,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="E100" name="Air Intake Temperature Sensor*" desc="E100-Air Intake Temperature Sensor" group="0x0B" subgroup="0x020E" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x000000</address>
+                        <address>0x000000</address>
                     </ecu>
                     <conversions>
                         <conversion units="VDC" storagetype="uint16" expr="x*0.00488" format="0.00" gauge_min="0" gauge_max="5" gauge_step="0.5" />
@@ -2170,7 +3130,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="E101" name="STATUS_LS_VKAT_SIGNAL_1*" desc="E101-STATUS_LS_VKAT_SIGNAL_1" group="0x0B" subgroup="0x020E" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x000001</address>
+                        <address>0x000001</address>
                     </ecu>
                     <conversions>
                         <conversion units="VDC" storagetype="uint16" expr="x*0.00488" format="0.00" gauge_min="0" gauge_max="5" gauge_step="0.5" />
@@ -2178,7 +3138,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="E102" name="STATUS_LS_VKAT_SIGNAL_2*" desc="E102-STATUS_LS_VKAT_SIGNAL_2" group="0x0B" subgroup="0x020E" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x000002</address>
+                        <address>0x000002</address>
                     </ecu>
                     <conversions>
                         <conversion units="VDC" storagetype="uint16" expr="x*0.00488" format="0.00" gauge_min="0" gauge_max="5" gauge_step="0.5" />
@@ -2186,7 +3146,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="E103" name="Engine Coolant Temperature Sensor*" desc="E103-Engine Coolant Temperature Sensor" group="0x0B" subgroup="0x020E" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x000003</address>
+                        <address>0x000003</address>
                     </ecu>
                     <conversions>
                         <conversion units="VDC" storagetype="uint16" expr="x*0.00488" format="0.00" gauge_min="0" gauge_max="5" gauge_step="0.5" />
@@ -2194,7 +3154,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="E104" name="ADC Input 0x04*" desc="E104" group="0x0B" subgroup="0x020E" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x000004</address>
+                        <address>0x000004</address>
                     </ecu>
                     <conversions>
                         <conversion units="VDC" storagetype="uint16" expr="x*0.00488" format="0.00" gauge_min="0" gauge_max="5" gauge_step="0.5" />
@@ -2202,7 +3162,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="E105" name="Oil Temperature Sensor Volts*" desc="E105-Oil Temperature Sensor Volts" group="0x0B" subgroup="0x020E" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x000005</address>
+                        <address>0x000005</address>
                     </ecu>
                     <conversions>
                         <conversion units="VDC" storagetype="uint16" expr="x*0.00488" format="0.00" gauge_min="0" gauge_max="5" gauge_step="0.5" />
@@ -2210,7 +3170,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="P18" name="Mass Airflow Volts*" desc="P18-Mass Airflow Volts" group="0x0B" subgroup="0x020E" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x000006</address>
+                        <address>0x000006</address>
                     </ecu>
                     <conversions>
                         <conversion units="VDC" storagetype="uint16" expr="x*0.00488" format="0.00" gauge_min="0" gauge_max="5" gauge_step="0.5" />
@@ -2218,7 +3178,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="E107" name="Battery Voltage Sensor 1*" desc="E107-Battery Voltage Sensor" group="0x0B" subgroup="0x020E" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x000007</address>
+                        <address>0x000007</address>
                     </ecu>
                     <conversions>
                         <conversion units="VDC" storagetype="uint16" expr="x*0.025" format="0.0" gauge_min="0" gauge_max="20" gauge_step="2" />
@@ -2226,7 +3186,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="E108" name="Accelerator Pedal Request Volts*" desc="E108-Battery Voltage Sensor" group="0x0B" subgroup="0x020E" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x000008</address>
+                        <address>0x000008</address>
                     </ecu>
                     <conversions>
                         <conversion units="VDC" storagetype="uint16" expr="x*0.025" format="0.0" gauge_min="0" gauge_max="20" gauge_step="2" />
@@ -2234,7 +3194,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="E109" name="Accelerator Pedal Plausibility Volts*" desc="E109" group="0x0B" subgroup="0x020E" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x000009</address>
+                        <address>0x000009</address>
                     </ecu>
                     <conversions>
                         <conversion units="VDC" storagetype="uint16" expr="x*0.00488" format="0.00" gauge_min="0" gauge_max="5" gauge_step="0.5" />
@@ -2242,7 +3202,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="P19" name="Throttle Position Volts*" desc="P19-Throttle 1 Position Volts" group="0x0B" subgroup="0x020E" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x00000A</address>
+                        <address>0x00000A</address>
                     </ecu>
                     <conversions>
                         <conversion units="VDC" storagetype="uint16" expr="x*0.00488" format="0.00" gauge_min="0" gauge_max="5" gauge_step="0.5" />
@@ -2250,7 +3210,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="P110" name="Throttle Plausibility Volts*" desc="P110-Throttle 2 Position Volts" group="0x0B" subgroup="0x020E" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x00000B</address>
+                        <address>0x00000B</address>
                     </ecu>
                     <conversions>
                         <conversion units="VDC" storagetype="uint16" expr="x*0.00488" format="0.00" gauge_min="0" gauge_max="5" gauge_step="0.5" />
@@ -2258,7 +3218,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="E120" name="ADC Input 0x10*" desc="E120" group="0x0B" subgroup="0x020E" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x000010</address>
+                        <address>0x000010</address>
                     </ecu>
                     <conversions>
                         <conversion units="VDC" storagetype="uint16" expr="x*0.00488" format="0.00" gauge_min="0" gauge_max="5" gauge_step="0.5" />
@@ -2266,7 +3226,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="E127" name="Knock Sensor 1 Volts*" desc="E127" group="0x0B" subgroup="0x020E" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x000017</address>
+                        <address>0x000017</address>
                     </ecu>
                     <conversions>
                         <conversion units="VDC" storagetype="uint16" expr="x*0.00488" format="0.00" gauge_min="0" gauge_max="5" gauge_step="0.5" />
@@ -2274,23 +3234,23 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="E128" name="Knock Sensor 2 Volts*" desc="E128" group="0x0B" subgroup="0x020E" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x000018</address>
+                        <address>0x000018</address>
                     </ecu>
                     <conversions>
                         <conversion units="VDC" storagetype="uint16" expr="x*0.00488" format="0.00" gauge_min="0" gauge_max="5" gauge_step="0.5" />
                     </conversions>
                 </ecuparam>
-                <ecuparam id="E129" name="STATUS_VLS_DOWN_2_BAS*" desc="E129-STATUS_VLS_DOWN_2_BAS" group="0x0B" subgroup="0x020E" target="1">
+                <ecuparam id="E129" name="STATUS_VLS_DOWN_1_BAS*" desc="E129-STATUS_VLS_DOWN_1_BAS" group="0x0B" subgroup="0x020E" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x000019</address>
+                        <address>0x000019</address>
                     </ecu>
                     <conversions>
                         <conversion units="VDC" storagetype="uint16" expr="x*0.00488" format="0.00" gauge_min="0" gauge_max="5" gauge_step="0.5" />
                     </conversions>
                 </ecuparam>
-                <ecuparam id="E130" name="STATUS_VLS_DOWN_1_BAS*" desc="E130-STATUS_VLS_DOWN_1_BAS" group="0x0B" subgroup="0x020E" target="1">
+                <ecuparam id="E130" name="STATUS_VLS_DOWN_2_BAS*" desc="E130-STATUS_VLS_DOWN_2_BAS" group="0x0B" subgroup="0x020E" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x00001A</address>
+                        <address>0x00001A</address>
                     </ecu>
                     <conversions>
                         <conversion units="VDC" storagetype="uint16" expr="x*0.00488" format="0.00" gauge_min="0" gauge_max="5" gauge_step="0.5" />
@@ -2298,7 +3258,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="P24" name="Atmospheric Pressure**" desc="P24-A temporary fake entry for the Dyno tab" group="0x0B" subgroup="0x03" groupsize="41" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x00</address>
+                        <address>0x00</address>
                     </ecu>
                     <conversions>
                         <conversion units="psi" expr="101.325*37/255" format="0.00" gauge_min="0" gauge_max="20" gauge_step="2" />
@@ -2312,7 +3272,7 @@ print <<FOOTER;
 <!-- Switches -->
                 <ecuparam id="S0" name="SW - Byte 0 Bit 7" desc="S0" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address bit="7">0x00</address>
+                        <address bit="7">0x00</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -2320,7 +3280,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="S1" name="SW - Byte 0 Bit 6" desc="S1" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address bit="6">0x00</address>
+                        <address bit="6">0x00</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -2328,7 +3288,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="S2" name="SW - Byte 0 Bit 5" desc="S2" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address bit="5">0x00</address>
+                        <address bit="5">0x00</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -2336,7 +3296,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="S3" name="SW - Byte 0 Bit 4" desc="S3" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address bit="4">0x00</address>
+                        <address bit="4">0x00</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -2344,7 +3304,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="S4" name="SW - Byte 0 Bit 3" desc="S4" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address bit="3">0x00</address>
+                        <address bit="3">0x00</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -2352,7 +3312,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="S5" name="SW - Byte 0 Bit 2" desc="S5" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address bit="2">0x00</address>
+                        <address bit="2">0x00</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -2360,7 +3320,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="S6" name="SW - Full Load" desc="S6-S_VL" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x00</address>
+                        <address>0x00</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="BitWise(3,x,1)/3" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -2368,7 +3328,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="S7" name="SW - Part Load" desc="S7-Part load" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x00</address>
+                        <address>0x00</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="BitWise(2,x,1)/2" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -2376,7 +3336,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="S8" name="SW - Closed Throttle" desc="S8-S_LL" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address>0x00</address>
+                        <address>0x00</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="BitWise(1,x,1)" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -2384,7 +3344,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="S9" name="SW - Byte 1 Bit 7" desc="S9" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address bit="7">0x01</address>
+                        <address bit="7">0x01</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -2392,7 +3352,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="S10" name="SW - Byte 1 Bit 6" desc="S10" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address bit="6">0x01</address>
+                        <address bit="6">0x01</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -2400,7 +3360,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="S11" name="SW - Byte 1 Bit 5" desc="S11" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address bit="5">0x01</address>
+                        <address bit="5">0x01</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -2408,7 +3368,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="S12" name="SW - Byte 1 Bit 4" desc="S12" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address bit="4">0x01</address>
+                        <address bit="4">0x01</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -2416,7 +3376,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="S13" name="SW - Byte 1 Bit 3" desc="S13" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address bit="3">0x01</address>
+                        <address bit="3">0x01</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -2424,7 +3384,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="S14" name="SW - Byte 1 Bit 2" desc="S14" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address bit="2">0x01</address>
+                        <address bit="2">0x01</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -2432,7 +3392,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="S15" name="SW - Byte 1 Bit 1" desc="S15" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address bit="1">0x01</address>
+                        <address bit="1">0x01</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -2440,7 +3400,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="S16" name="SW - Byte 1 Bit 0" desc="S16" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address bit="0">0x01</address>
+                        <address bit="0">0x01</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -2448,7 +3408,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="S17" name="SW - Byte 2 Bit 7" desc="S17" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address bit="7">0x02</address>
+                        <address bit="7">0x02</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -2456,7 +3416,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="S18" name="SW - Byte 2 Bit 6" desc="S18" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address bit="6">0x02</address>
+                        <address bit="6">0x02</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -2464,7 +3424,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="S19" name="SW - Byte 2 Bit 5" desc="S19" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address bit="5">0x02</address>
+                        <address bit="5">0x02</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -2473,7 +3433,7 @@ print <<FOOTER;
 <!--                <ecuparam id="S20" name="Rear Defogger Switch" desc="S20">  Reserved as Logger control switch -->
                 <ecuparam id="S21" name="SW - Byte 2 Bit 4" desc="S21" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address bit="4">0x02</address>
+                        <address bit="4">0x02</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -2481,7 +3441,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="S22" name="SW - Byte 2 Bit 3" desc="S22" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address bit="3">0x02</address>
+                        <address bit="3">0x02</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -2489,7 +3449,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="S23" name="SW - Byte 2 Bit 2" desc="S23" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address bit="2">0x02</address>
+                        <address bit="2">0x02</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -2497,7 +3457,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="S24" name="SW - Byte 2 Bit 1" desc="S24" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address bit="1">0x02</address>
+                        <address bit="1">0x02</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -2505,7 +3465,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="S25" name="SW - Byte 2 Bit 0" desc="S25" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address bit="0">0x02</address>
+                        <address bit="0">0x02</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -2513,7 +3473,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="S26" name="SW - Byte 3 Bit 7" desc="S26" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address bit="7">0x03</address>
+                        <address bit="7">0x03</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -2521,7 +3481,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="S27" name="SW - Byte 3 Bit 6" desc="S27" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address bit="6">0x03</address>
+                        <address bit="6">0x03</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -2529,7 +3489,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="S28" name="SW - Byte 3 Bit 5" desc="S28" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address bit="5">0x03</address>
+                        <address bit="5">0x03</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -2537,7 +3497,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="S29" name="SW - Byte 3 Bit 4" desc="S29" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address bit="4">0x03</address>
+                        <address bit="4">0x03</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -2545,7 +3505,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="S30" name="SW - Byte 3 Bit 3" desc="S30" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address bit="3">0x03</address>
+                        <address bit="3">0x03</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -2553,7 +3513,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="S31" name="SW - Byte 3 Bit 2" desc="S31" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address bit="2">0x03</address>
+                        <address bit="2">0x03</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -2561,7 +3521,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="S32" name="SW - Byte 3 Bit 1" desc="S32" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address bit="1">0x03</address>
+                        <address bit="1">0x03</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -2569,7 +3529,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="S33" name="SW - Byte 3 Bit 0" desc="S33" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address bit="0">0x03</address>
+                        <address bit="0">0x03</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -2577,7 +3537,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="S34" name="SW - Byte 4 Bit 7" desc="S34" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address bit="7">0x04</address>
+                        <address bit="7">0x04</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -2585,7 +3545,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="S35" name="SW - Byte 4 Bit 6" desc="S35" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address bit="6">0x04</address>
+                        <address bit="6">0x04</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -2593,7 +3553,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="S36" name="SW - Byte 4 Bit 5" desc="S36" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address bit="5">0x04</address>
+                        <address bit="5">0x04</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -2601,7 +3561,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="S37" name="SW - Byte 4 Bit 4" desc="S37" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address bit="4">0x04</address>
+                        <address bit="4">0x04</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -2609,7 +3569,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="S38" name="SW - Byte 4 Bit 3" desc="S38" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address bit="3">0x04</address>
+                        <address bit="3">0x04</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -2617,7 +3577,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="S39" name="SW - Byte 4 Bit 2" desc="S39" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address bit="2">0x04</address>
+                        <address bit="2">0x04</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -2625,7 +3585,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="S40" name="SW - Byte 4 Bit 1" desc="S40" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address bit="1">0x04</address>
+                        <address bit="1">0x04</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -2633,7 +3593,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="S41" name="SW - Byte 4 Bit 0" desc="S41" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address bit="0">0x04</address>
+                        <address bit="0">0x04</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -2641,7 +3601,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="S42" name="SW - Byte 5 Bit 7" desc="S42" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address bit="7">0x05</address>
+                        <address bit="7">0x05</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -2649,7 +3609,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="S43" name="SW - Byte 5 Bit 6" desc="S43" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address bit="6">0x05</address>
+                        <address bit="6">0x05</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -2657,7 +3617,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="S44" name="SW - Byte 5 Bit 5" desc="S44" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address bit="5">0x05</address>
+                        <address bit="5">0x05</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -2665,7 +3625,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="S45" name="SW - Byte 5 Bit 4" desc="S45" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address bit="4">0x05</address>
+                        <address bit="4">0x05</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -2673,7 +3633,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="S46" name="SW - Byte 5 Bit 3" desc="S46" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address bit="3">0x05</address>
+                        <address bit="3">0x05</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -2681,7 +3641,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="S47" name="SW - Byte 5 Bit 2" desc="S47" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address bit="2">0x05</address>
+                        <address bit="2">0x05</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -2689,7 +3649,7 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="S48" name="SW - Byte 5 Bit 1" desc="S48" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address bit="1">0x05</address>
+                        <address bit="1">0x05</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
@@ -2697,14 +3657,14 @@ print <<FOOTER;
                 </ecuparam>
                 <ecuparam id="S49" name="SW - Byte 5 Bit 0" desc="S49" group="0x0B" subgroup="0x04" groupsize="6" target="1">
                     <ecu id="7511570,7519308,7545150">
-						<address bit="0">0x05</address>
+                        <address bit="0">0x05</address>
                     </ecu>
                     <conversions>
                         <conversion units="On/Off" expr="x" format="0" gauge_min="0" gauge_max="1" gauge_step="1" />
                     </conversions>
                 </ecuparam>
             </ecuparams>
-		</protocol>
+        </protocol>
     </protocols>
 </logger>
 FOOTER
