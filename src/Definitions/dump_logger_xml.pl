@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# Copyright (C) 2017 Dale C. Schultz
+# Copyright (C) 2018 Dale C. Schultz
 # RomRaider member ID: dschultz
 #
 # You are free to use this source for any purpose, but please keep
@@ -9,8 +9,8 @@
 #
 # Purpose
 #   Reads the database and dumps logger XML file to STDOUT
-#   Version:    16
-#   Update:     December 15/2017
+#   Version:    18
+#   Update:     March 10, 2018
 #------------------------------------------------------------------------------------------
 
 # dump format
@@ -1528,12 +1528,12 @@ print <<FOOTER;
                         <conversion units="?" storagetype="uint16" endian="little" expr="x" format="0.00" gauge_min="0" gauge_max="65" gauge_step="6" />
                     </conversions>
                 </ecuparam>
-                <ecuparam id="E202" name="STATUS_TEV_TAST**" desc="E202-STATUS_TEV_TAST Direct RAM Read" group="0x06" subgroup="0x00" target="1">
+                <ecuparam id="E202" name="CPV Duty Cycle**" desc="E202-STATUS_TEV_TAST Canister Purge Valve Duty Cycle" group="0x06" subgroup="0x00" target="1">
                     <ecu id="1405854,1406464,1429373,1429861,1432401,1437806,1440176">
                         <address>0x00DA56</address>
                     </ecu>
                     <conversions>
-                        <conversion units="?" storagetype="uint8" endian="little" expr="x" format="0.00" gauge_min="0" gauge_max="65" gauge_step="6" />
+                        <conversion units="%" storagetype="uint8" endian="little" expr="x*100/255" format="0.00" gauge_min="0" gauge_max="100" gauge_step="10" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="E203" name="STATUS_FLAG_BELADUNG**" desc="E203-STATUS_FLAG_BELADUNG Direct RAM Read" group="0x06" subgroup="0x00" target="1">
@@ -2218,27 +2218,22 @@ print <<FOOTER;
                     </conversions>
                 </ecuparam>
                 <ecuparam id="E99" name="Knock Adaptation Table 1 Index **" desc="E99-Knock Adaptation Table 1 Index Direct RAM Read used by Adaptation display tool" group="0x06" subgroup="0x00" target="1">
-                    <ecu id="1429764,1430844,7526753,7500255">
-                        <address>0x0E000</address>
+                    <ecu id="1429764,1430844">
+                        <address>0x00C473</address>
+                    </ecu>
+                    <ecu id="7500255,7526753">
+                        <address>0x00C486</address>
                     </ecu>
                     <conversions>
-                        <conversion units="\xB0 Cor" storagetype="int8" endian="little" expr="-0.375*x" format="0.000" gauge_min="-48" gauge_max="0" gauge_step="5" />
+                        <conversion units="\xB0 Cor" storagetype="int8" endian="little" expr="(x-128)*0.375" format="0.000" gauge_min="-48" gauge_max="0" gauge_step="5" />
                     </conversions>
                 </ecuparam>
-                <ecuparam id="E24" name="Knock Retard - Global" desc="E24-Global correction applied to total timing" group="0x0B" subgroup="0x93" groupsize="1" target="1">
+                <ecuparam id="E24" name="RON Fuel Quality Factory" desc="E24-FAC_RON_AD correction applied moving from RON 98 to RON 91" group="0x0B" subgroup="0x93" groupsize="1" target="1">
                     <ecu id="1429764,1430844,7526753,7500255">
                         <address>0x00</address>
                     </ecu>
                     <conversions>
-                        <conversion units="\xB0 Cor" storagetype="uint8" endian="little" expr="-0.375*x" format="0.000" gauge_min="-48" gauge_max="0" gauge_step="5" />
-                    </conversions>
-                </ecuparam>
-                  <ecuparam id="E217" name="Knock Retard - Current" desc="E217-Current average correction applied to total timing" group="0x06" subgroup="0x00" target="1">
-                    <ecu id="1429764,1430844,7526753,7500255">
-                        <address>0x00c472</address>
-                    </ecu>
-                    <conversions>
-                        <conversion units="\xB0 Cor" storagetype="int8" expr="-0.375*x" format="0.00" gauge_min="-50" gauge_max="50" gauge_step="10" />
+                        <conversion units="%" storagetype="uint8" expr="x*100/255" format="0.00" gauge_min="0" gauge_max="100" gauge_step="10" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="E98" name="Air Intake Temperature Sensor*" desc="E100-Air Intake Temperature Sensor" group="0x0B" subgroup="0x020E" target="1">
@@ -3112,12 +3107,12 @@ print <<FOOTER;
                         <conversion units="%" storagetype="uint16" expr="(x-32768)*100/65536" format="0.00" gauge_min="-32" gauge_max="32" gauge_step="12" />
                     </conversions>
                 </ecuparam>
-                <ecuparam id="E24" name="Knock Retard - Global" desc="E24-Global correction applied to total timing" group="0x0B" subgroup="0x93" groupsize="2" target="1">
+                <ecuparam id="E24" name="RON Fuel Quality Factory" desc="E24-FAC_RON_AD correction applied moving from RON 98 to RON 91" group="0x0B" subgroup="0x93" groupsize="2" target="1">
                     <ecu id="7511570,7519308,7545150">
                         <address>0x00</address>
                     </ecu>
                     <conversions>
-                        <conversion units="\xB0 Cor" storagetype="uint16" expr="x/65536" format="0.00" gauge_min="-50" gauge_max="50" gauge_step="10" />
+                        <conversion units="%" storagetype="uint16" expr="x*100/65536" format="0.00" gauge_min="0" gauge_max="100" gauge_step="10" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="E100" name="Air Intake Temperature Sensor*" desc="E100-Air Intake Temperature Sensor" group="0x0B" subgroup="0x020E" target="1">
