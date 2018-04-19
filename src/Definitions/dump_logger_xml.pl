@@ -9,8 +9,8 @@
 #
 # Purpose
 #   Reads the database and dumps logger XML file to STDOUT
-#   Version:    18
-#   Update:     March 10, 2018
+#   Version:    19
+#   Update:     April 6, 2018
 #------------------------------------------------------------------------------------------
 
 # dump format
@@ -2225,7 +2225,7 @@ print <<FOOTER;
                         <address>0x00C486</address>
                     </ecu>
                     <conversions>
-                        <conversion units="\xB0 Cor" storagetype="int8" endian="little" expr="(x-128)*0.375" format="0.000" gauge_min="-48" gauge_max="0" gauge_step="5" />
+                        <conversion units="\xB0 Cor" storagetype="uint8" endian="little" expr="(x-128)*0.375" format="0.000" gauge_min="-48" gauge_max="0" gauge_step="5" />
                     </conversions>
                 </ecuparam>
                 <ecuparam id="E24" name="RON Fuel Quality Factory" desc="E24-FAC_RON_AD correction applied moving from RON 98 to RON 91" group="0x0B" subgroup="0x93" groupsize="1" target="1">
