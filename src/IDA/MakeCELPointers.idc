@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015  Dale C. Schultz
+ * Copyright (C) 2022  Dale C. Schultz
  * RomRaider member ID: dschultz
  *
  * You are free to use this script for any purpose, but please keep
@@ -273,6 +273,9 @@ static CreatePcodeArray() {
 	SetArrayString(pcArray, 0x0057, "HO2S CIRCUIT LOW B2 S2");
 	SetArrayString(pcArray, 0x0058, "HO2S CIRCUIT HIGH B2 S2");
 	SetArrayString(pcArray, 0x0068, "MAP SENSOR RANGE/PERF");
+	SetArrayString(pcArray, 0x0071, "AMBIENT TEMPERATURE SENSOR CIRCUIT A RANGE/PERF");
+	SetArrayString(pcArray, 0x0072, "AMBIENT TEMPERATURE SENSOR CIRCUIT A LOW");
+	SetArrayString(pcArray, 0x0073, "AMBIENT TEMPERATURE SENSOR CIRCUIT A HIGH");
 	SetArrayString(pcArray, 0x0076, "INTAKE VALVE CIRCUIT LOW (BANK 1)");
 	SetArrayString(pcArray, 0x0077, "INTAKE VALVE CONTROL HIGH (BANK 1)");
 	SetArrayString(pcArray, 0x0082, "INTAKE VALVE CONTROL LOW (BANK 2)");
@@ -426,7 +429,9 @@ static CreatePcodeArray() {
 	SetArrayString(pcArray, 0x0483, "RADIATOR FAN RATIONALITY CHECK");
 	SetArrayString(pcArray, 0x04AC, "EVAP SYSTEM PURGE CONTROL VALVE B CIRCUIT LOW");
 	SetArrayString(pcArray, 0x04AD, "EVAP SYSTEM PURGE CONTROL VALVE B CIRCUIT HIGH");
+	SetArrayString(pcArray, 0x04AF, "EVAP CANISTER PURGE VALVE B - EVAP VALVE STUCK CLOSED");
 	SetArrayString(pcArray, 0x04DB, "CRANKCASE VENTILATION SYSTEM DISCONNECTED");
+	SetArrayString(pcArray, 0x04F0, "EVAP SYSTEM HIGH PRESSURE PURGE LINE (CPC2) PERF");
 	SetArrayString(pcArray, 0x0500, "VEHICLE SPEED SENSOR A");
 	SetArrayString(pcArray, 0x0502, "VEHICLE SPEED SENSOR LOW INPUT");
 	SetArrayString(pcArray, 0x0503, "VEHICLE SPEED SENSOR INTERMITTENT");
@@ -464,6 +469,7 @@ static CreatePcodeArray() {
 	SetArrayString(pcArray, 0x062D, "NO.1 FUEL INJECTOR DRIVER CIRCUIT PERFORMANCE");
 	SetArrayString(pcArray, 0x062F, "EEPROM ERROR");
 	SetArrayString(pcArray, 0x0638, "THROTTLE ACTUATOR RANGE/PERF");
+	SetArrayString(pcArray, 0x0685, "ENGINE CONTROL MODULE POWER RELAY CONTROL CIRCUIT OPEN");
 	SetArrayString(pcArray, 0x0691, "RADIATOR FAN CIRCUIT LOW");
 	SetArrayString(pcArray, 0x0692, "RADIATOR FAN CIRCUIT HIGH");
 	SetArrayString(pcArray, 0x0700, "TRANSMISSION CONTROL SYSTEM");
@@ -601,6 +607,7 @@ static CreatePcodeArray() {
 	SetArrayString(pcArray, 0x2227, "BARO. PRESSURE CIRCUIT RANGE/PERF");
 	SetArrayString(pcArray, 0x2228, "BARO. PRESSURE CIRCUIT LOW INPUT");
 	SetArrayString(pcArray, 0x2229, "BARO. PRESSURE CIRCUIT HIGH INPUT");
+	SetArrayString(pcArray, 0x226B, "TURBOCHARGER BOOST PRESSURE TOO HIGH – MECHANICAL");
 	SetArrayString(pcArray, 0x2270, "O2 SENSOR SIGNAL BIASED/STUCK LEAN BANK 1 SENSOR 2");
 	SetArrayString(pcArray, 0x2271, "O2 SENSOR SIGNAL BIASED/STUCK RICH BANK 1 SENSOR 2");
 	SetArrayString(pcArray, 0x2272, "O2 SENSOR SIGNAL BIASED/STUCK LEAN BANK 2 SENSOR 2");
@@ -618,8 +625,12 @@ static CreatePcodeArray() {
 	SetArrayString(pcArray, 0x2442, "SECONDARY AIR PUMP VALVE 2 STUCK OPEN");
 	SetArrayString(pcArray, 0x2443, "SECONDARY AIR PUMP 2 STUCK CLOSED");
 	SetArrayString(pcArray, 0x2444, "SECONDARY AIR PUMP 1 STUCK ON B1");
+	SetArrayString(pcArray, 0x24B9, "EVAP SYSTEM LEAK DETECTION PUMP PRESSURE SENSOR CIRCUIT RANGE/PERF");
+	SetArrayString(pcArray, 0x24BA, "EVAP SYSTEM LEAK DETECTION PUMP PRESSURE SENSOR CIRCUIT LOW");
+	SetArrayString(pcArray, 0x24BB, "EVAP SYSTEM LEAK DETECTION PUMP PRESSURE SENSOR CIRCUIT HIGH");
 	SetArrayString(pcArray, 0x2503, "CHARGING SYSTEM VOLTAGE LOW");
 	SetArrayString(pcArray, 0x2504, "CHARGING SYSTEM VOLTAGE HIGH");
+	SetArrayString(pcArray, 0x2530, "IGNITION SWITCH RUN POSITION CIRCUIT");
 	SetArrayString(pcArray, 0x2257, "AIR SYSTEM CONTROL A CIRCUIT LOW");
 	SetArrayString(pcArray, 0x2258, "AIR SYSTEM CONTROL A CIRCUIT HIGH");
 	SetArrayString(pcArray, 0x2610, "ECM/PCM INTERNAL ENGINE OFF TIMER PERFORMANCE");
